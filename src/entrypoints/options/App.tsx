@@ -7,10 +7,10 @@ import { resolveLanguage, SupportedLocale, t } from '../../utils/i18n';
 import { cleanBaseUrl, normalizeToMatchPattern } from '../../utils/url';
 import './styles.css';
 
-type Tab = 'profiles' | 'translation' | 'triggers' | 'about';
+type Tab = 'general' | 'profiles' | 'translation' | 'about';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('profiles');
+  const [activeTab, setActiveTab] = useState<Tab>('general');
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const locale: SupportedLocale = resolveLanguage(settings.uiLang);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -272,40 +272,214 @@ export function App() {
             </p>
           </div>
         </div>
+
+        <div className="header-lang-switch">
+          <span className="header-lang-label">🌐 {t('uiLanguageLabel', undefined, locale)}:</span>
+          <select
+            className="header-lang-select"
+            value={settings.uiLang || 'auto'}
+            onChange={(e) =>
+              handleSaveSettings({ uiLang: (e.target as HTMLSelectElement).value as any })
+            }
+          >
+            {UI_LANGUAGES.map((item) => (
+              <option key={item.code} value={item.code}>
+                {locale === 'zh_CN' ? item.labelZh : item.labelEn}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
       {/* Tabs */}
       <nav className="tabs-nav">
         <button
+          className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`}
+          onClick={() => setActiveTab('general')}
+        >
+          {t('generalTab', undefined, locale)}
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'profiles' ? 'active' : ''}`}
           onClick={() => setActiveTab('profiles')}
         >
-          {t('profilesTitle', undefined, locale)}
+          {t('profilesTab', undefined, locale)}
         </button>
         <button
           className={`tab-btn ${activeTab === 'translation' ? 'active' : ''}`}
           onClick={() => setActiveTab('translation')}
         >
-          {t('translationSettings', undefined, locale)}
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'triggers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('triggers')}
-        >
-          {locale === 'zh_CN' ? '触发与快捷' : 'Triggers & Shortcuts'}
+          {t('translationTab', undefined, locale)}
         </button>
         <button
           className={`tab-btn ${activeTab === 'about' ? 'active' : ''}`}
           onClick={() => setActiveTab('about')}
         >
-          {locale === 'zh_CN' ? '存储与关于' : 'Storage & About'}
+          {t('aboutTab', undefined, locale)}
         </button>
       </nav>
 
       {/* Alert Banner */}
       {alert && <div className={`alert alert-${alert.type}`}>{alert.message}</div>}
 
-      {/* Tab 1: Profiles Management */}
+      {/* Tab 1: General & UI */}
+      {activeTab === 'general' && (
+        <section className="panel">
+          <div>
+            <h2 className="panel-title">{t('generalTab', undefined, locale)}</h2>
+            <p className="panel-desc">
+              {locale === 'zh_CN'
+                ? '配置界面显示语言、全局生效开关及划词触发机制。'
+                : 'Configure interface display language, global master switch, and selection triggers.'}
+            </p>
+          </div>
+
+          {/* Interface Language Setting Card */}
+          <div className="setting-card">
+            <div className="setting-card-header">
+              <div>
+                <h3 className="setting-card-title">🌐 {t('uiLanguageLabel', undefined, locale)}</h3>
+                <p className="setting-card-desc">{t('uiLanguageDesc', undefined, locale)}</p>
+              </div>
+            </div>
+
+            <div className="lang-options-grid">
+              <button
+                type="button"
+                className={`lang-card-option ${settings.uiLang === 'auto' ? 'active' : ''}`}
+                onClick={() => handleSaveSettings({ uiLang: 'auto' })}
+              >
+                <div className="lang-card-radio">
+                  <span className={`radio-dot ${settings.uiLang === 'auto' ? 'selected' : ''}`} />
+                </div>
+                <div className="lang-card-content">
+                  <div className="lang-card-title">{t('langAuto', undefined, locale)}</div>
+                  <div className="lang-card-desc">{t('langAutoDesc', undefined, locale)}</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`lang-card-option ${settings.uiLang === 'zh_CN' ? 'active' : ''}`}
+                onClick={() => handleSaveSettings({ uiLang: 'zh_CN' })}
+              >
+                <div className="lang-card-radio">
+                  <span className={`radio-dot ${settings.uiLang === 'zh_CN' ? 'selected' : ''}`} />
+                </div>
+                <div className="lang-card-content">
+                  <div className="lang-card-title">{t('langZh', undefined, locale)}</div>
+                  <div className="lang-card-desc">{t('langZhDesc', undefined, locale)}</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`lang-card-option ${settings.uiLang === 'en' ? 'active' : ''}`}
+                onClick={() => handleSaveSettings({ uiLang: 'en' })}
+              >
+                <div className="lang-card-radio">
+                  <span className={`radio-dot ${settings.uiLang === 'en' ? 'selected' : ''}`} />
+                </div>
+                <div className="lang-card-content">
+                  <div className="lang-card-title">{t('langEn', undefined, locale)}</div>
+                  <div className="lang-card-desc">{t('langEnDesc', undefined, locale)}</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Master Switch Card */}
+          <div className="setting-card">
+            <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={settings.globalEnabled}
+                onChange={(e) =>
+                  handleSaveSettings({ globalEnabled: (e.target as HTMLInputElement).checked })
+                }
+              />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '14px' }}>{t('globalEnabledLabel', undefined, locale)}</div>
+                <div className="form-hint">{t('globalEnabledDesc', undefined, locale)}</div>
+              </div>
+            </label>
+          </div>
+
+          {/* Triggers Card */}
+          <div className="setting-card">
+            <h3 className="setting-card-title">
+              {locale === 'zh_CN' ? '划词触发方式' : 'Selection Triggers'}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '6px' }}>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={settings.triggers.selectionButton}
+                  onChange={(e) =>
+                    handleSaveSettings({
+                      triggers: { ...settings.triggers, selectionButton: (e.target as HTMLInputElement).checked },
+                    })
+                  }
+                />
+                <div>
+                  <div style={{ fontWeight: 500 }}>{t('selectionButtonLabel', undefined, locale)}</div>
+                  <div className="form-hint">{t('selectionButtonDesc', undefined, locale)}</div>
+                </div>
+              </label>
+
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={settings.triggers.contextMenu}
+                  onChange={(e) =>
+                    handleSaveSettings({
+                      triggers: { ...settings.triggers, contextMenu: (e.target as HTMLInputElement).checked },
+                    })
+                  }
+                />
+                <div>
+                  <div style={{ fontWeight: 500 }}>{t('contextMenuLabel', undefined, locale)}</div>
+                  <div className="form-hint">{t('contextMenuDesc', undefined, locale)}</div>
+                </div>
+              </label>
+
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={settings.triggers.shortcut}
+                  onChange={(e) =>
+                    handleSaveSettings({
+                      triggers: { ...settings.triggers, shortcut: (e.target as HTMLInputElement).checked },
+                    })
+                  }
+                />
+                <div>
+                  <div style={{ fontWeight: 500 }}>{t('shortcutLabel', undefined, locale)} (Alt+T)</div>
+                  <div className="form-hint">{t('shortcutDesc', undefined, locale)}</div>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '14px', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                  {locale === 'zh_CN' ? '自定义快捷键按键组合' : 'Custom Keyboard Shortcut'}
+                </div>
+                <div className="form-hint">
+                  {locale === 'zh_CN'
+                    ? '受 Chrome 安全规范限制，扩展无法直接篡改系统按键，请点击前往 Chrome 扩展快捷键管理页自定义。'
+                    : 'Due to browser security rules, shortcuts must be customized via Chrome Extension Shortcuts page.'}
+                </div>
+              </div>
+              <button className="btn" onClick={handleOpenShortcuts}>
+                {t('editShortcuts', undefined, locale)}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Tab 2: Profiles Management */}
       {activeTab === 'profiles' && (
         <section className="panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -625,25 +799,6 @@ export function App() {
             </p>
           </div>
 
-          {/* Interface Language */}
-          <div className="form-group">
-            <label className="form-label">{t('uiLanguageLabel', undefined, locale)}</label>
-            <select
-              className="form-select"
-              value={settings.uiLang || 'auto'}
-              onChange={(e) =>
-                handleSaveSettings({ uiLang: (e.target as HTMLSelectElement).value as any })
-              }
-            >
-              {UI_LANGUAGES.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {locale === 'zh_CN' ? item.labelZh : item.labelEn}
-                </option>
-              ))}
-            </select>
-            <span className="form-hint">{t('uiLanguageDesc', undefined, locale)}</span>
-          </div>
-
           <div className="form-group">
             <label className="form-label">{t('targetLangLabel', undefined, locale)}</label>
             <select
@@ -719,88 +874,6 @@ export function App() {
             <span className="form-hint" style={{ marginLeft: '24px' }}>
               {t('streamingDesc', undefined, locale)}
             </span>
-          </div>
-        </section>
-      )}
-
-      {/* Tab 3: Triggers & Shortcuts */}
-      {activeTab === 'triggers' && (
-        <section className="panel">
-          <div>
-            <h2 className="panel-title">{t('generalAndTriggers', undefined, locale)}</h2>
-            <p className="panel-desc">
-              {locale === 'zh_CN'
-                ? '配置划词后弹窗触发机制与浏览器原生快捷键。'
-                : 'Configure selection triggers and native browser keyboard shortcuts.'}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={settings.triggers.selectionButton}
-                onChange={(e) =>
-                  handleSaveSettings({
-                    triggers: { ...settings.triggers, selectionButton: (e.target as HTMLInputElement).checked },
-                  })
-                }
-              />
-              <div>
-                <div style={{ fontWeight: 500 }}>{t('selectionButtonLabel', undefined, locale)}</div>
-                <div className="form-hint">{t('selectionButtonDesc', undefined, locale)}</div>
-              </div>
-            </label>
-
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={settings.triggers.contextMenu}
-                onChange={(e) =>
-                  handleSaveSettings({
-                    triggers: { ...settings.triggers, contextMenu: (e.target as HTMLInputElement).checked },
-                  })
-                }
-              />
-              <div>
-                <div style={{ fontWeight: 500 }}>{t('contextMenuLabel', undefined, locale)}</div>
-                <div className="form-hint">{t('contextMenuDesc', undefined, locale)}</div>
-              </div>
-            </label>
-
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={settings.triggers.shortcut}
-                onChange={(e) =>
-                  handleSaveSettings({
-                    triggers: { ...settings.triggers, shortcut: (e.target as HTMLInputElement).checked },
-                  })
-                }
-              />
-              <div>
-                <div style={{ fontWeight: 500 }}>{t('shortcutLabel', undefined, locale)} (Alt+T)</div>
-                <div className="form-hint">{t('shortcutDesc', undefined, locale)}</div>
-              </div>
-            </label>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>
-                  {locale === 'zh_CN' ? '自定义快捷键按键组合' : 'Custom Keyboard Shortcut'}
-                </div>
-                <div className="form-hint">
-                  {locale === 'zh_CN'
-                    ? '受 Chrome 安全规范限制，扩展无法直接篡改系统按键，请点击前往 Chrome 扩展快捷键管理页自定义。'
-                    : 'Due to browser security rules, shortcuts must be customized via Chrome Extension Shortcuts page.'}
-                </div>
-              </div>
-              <button className="btn" onClick={handleOpenShortcuts}>
-                {t('editShortcuts', undefined, locale)}
-              </button>
-            </div>
           </div>
         </section>
       )}
