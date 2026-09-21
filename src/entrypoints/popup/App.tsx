@@ -138,7 +138,7 @@ export function App() {
       {/* Pause Notification Banner */}
       {settings && !settings.globalEnabled && (
         <div className="pause-banner">
-          <span>⚠️ {t('globallyDisabledBanner', undefined, locale)}</span>
+          <span>{t('globallyDisabledBanner', undefined, locale)}</span>
         </div>
       )}
 

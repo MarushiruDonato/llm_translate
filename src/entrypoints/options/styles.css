@@ -88,34 +88,6 @@ body {
   color: var(--text-secondary);
 }
 
-.header-lang-switch {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-lang-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.header-lang-select {
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  background-color: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-}
-
-.header-lang-select:focus {
-  border-color: var(--primary);
-}
-
 /* Nav Tabs */
 .tabs-nav {
   display: flex;

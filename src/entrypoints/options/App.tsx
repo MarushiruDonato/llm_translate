@@ -229,8 +229,8 @@ export function App() {
         success: true,
         message:
           locale === 'zh_CN'
-            ? `连通成功！发送: ping ➔ 响应: ${cleanOutput || 'pong'} (耗时 ${elapsed}ms)`
-            : `Connected! ping ➔ ${cleanOutput || 'pong'} (${elapsed}ms)`,
+            ? `连通成功！发送: ping -> 响应: ${cleanOutput || 'pong'} (耗时 ${elapsed}ms)`
+            : `Connected! ping -> ${cleanOutput || 'pong'} (${elapsed}ms)`,
       });
     } catch (err: any) {
       setTestResult({
@@ -271,23 +271,6 @@ export function App() {
                 : 'Directly connect to your LLM endpoints with privacy, zero tracking, and no intermediary servers'}
             </p>
           </div>
-        </div>
-
-        <div className="header-lang-switch">
-          <span className="header-lang-label">🌐 {t('uiLanguageLabel', undefined, locale)}:</span>
-          <select
-            className="header-lang-select"
-            value={settings.uiLang || 'auto'}
-            onChange={(e) =>
-              handleSaveSettings({ uiLang: (e.target as HTMLSelectElement).value as any })
-            }
-          >
-            {UI_LANGUAGES.map((item) => (
-              <option key={item.code} value={item.code}>
-                {locale === 'zh_CN' ? item.labelZh : item.labelEn}
-              </option>
-            ))}
-          </select>
         </div>
       </header>
 
@@ -338,7 +321,7 @@ export function App() {
           <div className="setting-card">
             <div className="setting-card-header">
               <div>
-                <h3 className="setting-card-title">🌐 {t('uiLanguageLabel', undefined, locale)}</h3>
+                <h3 className="setting-card-title">{t('uiLanguageLabel', undefined, locale)}</h3>
                 <p className="setting-card-desc">{t('uiLanguageDesc', undefined, locale)}</p>
               </div>
             </div>

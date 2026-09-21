@@ -1,9 +1,10 @@
 # LLM 划词翻译 (LLM Selection Translate)
 
-基于大语言模型的浏览器划词翻译扩展，采用 **BYOK (Bring Your Own Key)** 模式，纯客户端直连各大模型服务商，无中间服务器，注重速度与隐私安全。
+一款纯粹简洁的大模型划词翻译浏览器扩展，采用 **BYOK (Bring Your Own Key)** 模式，纯客户端直连各大模型服务商，无中间服务器，注重速度与隐私安全。
 
 ## 特性
 
+- **纯粹简洁**：专注于纯粹简洁的大模型划词翻译体验，轻量克制，无冗余功能。
 - **BYOK 模式**：自带 API Key，兼容 OpenAI 协议（DeepSeek / OpenAI / SiliconFlow 等）、Anthropic (Claude) 以及本地模型（Ollama 等）。
 - **客户端直连**：浏览器直接向目标端点发起请求，零第三方服务器中转。
 - **流式输出**：支持 SSE 流式推流，逐字实时返回翻译内容。
