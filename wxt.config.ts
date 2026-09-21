@@ -5,7 +5,7 @@ import preact from '@preact/preset-vite';
 export default defineConfig({
   srcDir: 'src',
   vite: () => ({
-    plugins: [preact()],
+    plugins: [preact() as any],
   }),
   manifest: {
     name: 'LLM 划词翻译',

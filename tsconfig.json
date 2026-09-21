@@ -1,4 +1,5 @@
 {
+  "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
@@ -9,7 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "types": ["wxt/client"],
+    "types": ["chrome", "wxt/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
@@ -17,6 +18,7 @@
   "include": [
     "src/**/*",
     "tests/**/*",
-    "wxt.config.ts"
+    "wxt.config.ts",
+    ".wxt/types/*.d.ts"
   ]
 }
