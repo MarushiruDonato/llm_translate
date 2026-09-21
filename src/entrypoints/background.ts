@@ -144,6 +144,16 @@ export default defineBackground(() => {
           sendToPort(port, { type: 'meta', cached: true, detectedLang });
           sendToPort(port, { type: 'chunk', text: cached.translation });
           sendToPort(port, { type: 'done' });
+
+          // Update sourceUrl and bump to top in history if available
+          if (request.sourceUrl) {
+            await addHistory({
+              ...cached,
+              sourceUrl: request.sourceUrl,
+              sourceTitle: request.sourceTitle || cached.sourceTitle,
+              timestamp: Date.now(),
+            });
+          }
           return;
         }
       }
@@ -197,6 +207,8 @@ export default defineBackground(() => {
               targetLang: request.targetLang,
               timestamp: Date.now(),
               cacheKey,
+              sourceUrl: request.sourceUrl,
+              sourceTitle: request.sourceTitle,
             });
           }
         }

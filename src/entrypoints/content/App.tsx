@@ -3,6 +3,7 @@ import { getProfiles, getSettings } from '../../storage';
 import { FlatModelOption, ServerMessage } from '../../types';
 import { PORT_NAME } from '../../utils/constants';
 import { calculateButtonPosition, calculateFloatingPosition } from '../../utils/position';
+import { generateTextFragmentUrl } from '../../utils/url';
 
 export function App() {
   const [showButton, setShowButton] = useState(false);
@@ -122,6 +123,9 @@ export function App() {
         portRef.current = null;
       });
 
+      const sourceUrl = generateTextFragmentUrl(window.location.href, selectedText);
+      const sourceTitle = document.title || '';
+
       port.postMessage({
         type: 'translate',
         request: {
@@ -132,6 +136,8 @@ export function App() {
           profileId,
           modelName,
           bypassCache,
+          sourceUrl,
+          sourceTitle,
         },
       });
     } catch (err: any) {

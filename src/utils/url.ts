@@ -45,3 +45,33 @@ export function cleanBaseUrl(baseUrl: string): string {
   }
   return cleaned.replace(/\/+$/, '');
 }
+
+/**
+ * Generates a Chrome Scroll-to-Text-Fragment URL pointing directly to the selected text.
+ * Syntax: https://example.com/page#:~:text=[startText][,endText]
+ * When opened in Chrome, the browser automatically navigates, scrolls to the text, and highlights it.
+ */
+export function generateTextFragmentUrl(pageUrl: string, selectedText: string): string {
+  if (!pageUrl || !/^https?:\/\//i.test(pageUrl)) {
+    return pageUrl || '';
+  }
+
+  const [cleanUrl] = pageUrl.split('#');
+  const cleanText = selectedText.replace(/\s+/g, ' ').trim();
+  if (!cleanText) return cleanUrl;
+
+  const encodeFragmentPart = (part: string) => encodeURIComponent(part).replace(/-/g, '%2D');
+
+  const words = cleanText.split(' ');
+  if (words.length > 8) {
+    const start = words.slice(0, 4).join(' ');
+    const end = words.slice(-4).join(' ');
+    return `${cleanUrl}#:~:text=${encodeFragmentPart(start)},${encodeFragmentPart(end)}`;
+  } else if (cleanText.length > 80) {
+    const start = cleanText.slice(0, 30).trim();
+    const end = cleanText.slice(-30).trim();
+    return `${cleanUrl}#:~:text=${encodeFragmentPart(start)},${encodeFragmentPart(end)}`;
+  } else {
+    return `${cleanUrl}#:~:text=${encodeFragmentPart(cleanText)}`;
+  }
+}

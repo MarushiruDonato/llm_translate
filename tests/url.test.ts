@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanBaseUrl, normalizeToMatchPattern } from '../src/utils/url';
+import { cleanBaseUrl, generateTextFragmentUrl, normalizeToMatchPattern } from '../src/utils/url';
 
 describe('normalizeToMatchPattern', () => {
   it('should normalize standard https URL with subpath', () => {
@@ -29,3 +29,28 @@ describe('cleanBaseUrl', () => {
     expect(cleanBaseUrl('api.deepseek.com/v1///')).toBe('https://api.deepseek.com/v1');
   });
 });
+
+describe('generateTextFragmentUrl', () => {
+  it('should append text fragment to url for short selection', () => {
+    const url = generateTextFragmentUrl('https://en.wikipedia.org/wiki/JavaScript', 'JavaScript');
+    expect(url).toBe('https://en.wikipedia.org/wiki/JavaScript#:~:text=JavaScript');
+  });
+
+  it('should strip existing hash before appending text fragment', () => {
+    const url = generateTextFragmentUrl('https://example.com/doc#existing-hash', 'Hello world');
+    expect(url).toBe('https://example.com/doc#:~:text=Hello%20world');
+  });
+
+  it('should generate start and end fragment for long text', () => {
+    const longText = 'One two three four five six seven eight nine ten eleven twelve';
+    const url = generateTextFragmentUrl('https://example.com/article', longText);
+    expect(url).toContain('#:~:text=');
+    expect(url).toContain(',');
+  });
+
+  it('should return original url if invalid or non-http', () => {
+    expect(generateTextFragmentUrl('chrome://extensions', 'test')).toBe('chrome://extensions');
+    expect(generateTextFragmentUrl('', 'test')).toBe('');
+  });
+});
+

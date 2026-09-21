@@ -341,3 +341,45 @@ input:checked + .slider:before {
   border-color: var(--primary);
   color: var(--primary);
 }
+
+.card-url-row {
+  display: flex;
+  align-items: center;
+  margin-top: 1px;
+}
+
+.source-url-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--primary);
+  text-decoration: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-color: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.source-url-link:hover {
+  border-color: var(--primary);
+  text-decoration: none;
+}
+
+.mini-btn.primary-link {
+  color: var(--primary);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.mini-btn.primary-link:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+

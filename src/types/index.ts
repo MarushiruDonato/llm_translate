@@ -50,6 +50,8 @@ export interface TranslateRequest {
   modelName: string;
   params?: ModelParams;
   bypassCache?: boolean;
+  sourceUrl?: string;
+  sourceTitle?: string;
 }
 
 // Port stream message types: Client -> Background
@@ -75,6 +77,8 @@ export interface HistoryEntry {
   targetLang: string;
   timestamp: number;
   cacheKey: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
 }
 
 export interface FlatModelOption {

@@ -60,6 +60,23 @@ export function App() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleOpenUrl = (url: string) => {
+    if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+      chrome.tabs.create({ url });
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
+  const extractHost = (urlStr: string) => {
+    try {
+      const u = new URL(urlStr);
+      return u.hostname;
+    } catch {
+      return '对应网页';
+    }
+  };
+
   const filteredHistory = history.filter((item) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -158,6 +175,26 @@ export function App() {
                 <span className="card-time">{formatTime(item.timestamp)}</span>
               </div>
 
+              {/* Source webpage link pointing to exact text fragment */}
+              {item.sourceUrl && (
+                <div className="card-url-row">
+                  <a
+                    href={item.sourceUrl}
+                    className="source-url-link"
+                    title={`点击打开网页并定位选中文本：\n${item.sourceUrl}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleOpenUrl(item.sourceUrl!);
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />
+                    </svg>
+                    <span>{item.sourceTitle || extractHost(item.sourceUrl)}</span>
+                  </a>
+                </div>
+              )}
+
               <div className="card-source" title={item.text}>
                 {item.text}
               </div>
@@ -165,6 +202,15 @@ export function App() {
               <div className="card-target">{item.translation}</div>
 
               <div className="card-bottom">
+                {item.sourceUrl && (
+                  <button
+                    className="mini-btn primary-link"
+                    onClick={() => handleOpenUrl(item.sourceUrl!)}
+                    title="在浏览器新标签页中打开对应网页并自动滚动高亮选中文本"
+                  >
+                    打开网页 ↗
+                  </button>
+                )}
                 <button
                   className={`mini-btn ${copiedId === item.id ? 'copied' : ''}`}
                   onClick={() => handleCopy(item.id, item.translation)}
