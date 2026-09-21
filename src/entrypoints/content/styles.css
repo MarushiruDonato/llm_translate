@@ -79,8 +79,10 @@
 .llm-card {
   position: absolute;
   z-index: 2147483647;
-  width: 360px;
-  max-width: calc(100vw - 24px);
+  min-width: 280px;
+  min-height: 140px;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100vh - 20px);
   background: var(--llm-bg);
   color: var(--llm-text);
   border: 1px solid var(--llm-border);
@@ -88,9 +90,97 @@
   box-shadow: var(--llm-shadow);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   user-select: text;
   animation: llm-fade-in 0.15s ease-out;
+}
+
+/* Edge and Corner Resize Handles */
+.llm-resize-handle {
+  position: absolute;
+  z-index: 20;
+  user-select: none;
+}
+
+.llm-resize-n {
+  top: -4px;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.llm-resize-s {
+  bottom: -4px;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.llm-resize-e {
+  top: 10px;
+  bottom: 10px;
+  right: -4px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.llm-resize-w {
+  top: 10px;
+  bottom: 10px;
+  left: -4px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.llm-resize-nw {
+  top: -4px;
+  left: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+.llm-resize-ne {
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.llm-resize-sw {
+  bottom: -4px;
+  left: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.llm-resize-se {
+  bottom: 0px;
+  right: 0px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.llm-resize-corner-grip {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--llm-text-muted);
+  border-bottom: 2px solid var(--llm-text-muted);
+  margin-right: 3px;
+  margin-bottom: 3px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.llm-card:hover .llm-resize-corner-grip {
+  opacity: 0.8;
 }
 
 @keyframes llm-fade-in {
@@ -109,6 +199,8 @@
   padding: 8px 12px;
   background: var(--llm-bg-secondary);
   border-bottom: 1px solid var(--llm-border);
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -233,6 +325,8 @@
   padding: 8px 12px;
   border-top: 1px solid var(--llm-border);
   background: var(--llm-bg-secondary);
+  border-bottom-left-radius: 11px;
+  border-bottom-right-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: space-between;
