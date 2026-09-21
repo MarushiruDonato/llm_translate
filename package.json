@@ -9,7 +9,7 @@
     "build": "wxt build",
     "zip": "wxt zip",
     "test": "vitest run",
-    "compile": "tsc --noEmit"
+    "compile": "wxt prepare && tsc --noEmit"
   },
   "dependencies": {
     "preact": "^10.25.4"
