@@ -29,7 +29,10 @@ export interface TriggerSettings {
   shortcut: boolean;
 }
 
+export type UILanguage = 'auto' | 'zh_CN' | 'en';
+
 export interface AppSettings {
+  uiLang: UILanguage;
   globalEnabled: boolean;
   triggers: TriggerSettings;
   targetLang: string;

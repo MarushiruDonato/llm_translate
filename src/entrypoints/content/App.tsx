@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { getProfiles, getSettings } from '../../storage';
 import { FlatModelOption, ServerMessage } from '../../types';
 import { PORT_NAME } from '../../utils/constants';
+import { resolveLanguage, SupportedLocale, t } from '../../utils/i18n';
 import { calculateButtonPosition, calculateFloatingPosition } from '../../utils/position';
 import { generateTextFragmentUrl } from '../../utils/url';
 
 export function App() {
+  const [uiLocale, setUiLocale] = useState<SupportedLocale>('zh_CN');
   const [showButton, setShowButton] = useState(false);
   const [buttonPos, setButtonPos] = useState({ x: 0, y: 0 });
 
@@ -39,6 +41,8 @@ export function App() {
   useEffect(() => {
     async function init() {
       const settings = await getSettings();
+      setUiLocale(resolveLanguage(settings.uiLang));
+
       const profiles = await getProfiles();
 
       const flatList: FlatModelOption[] = [];
@@ -67,6 +71,16 @@ export function App() {
       }
     }
     init();
+
+    const handleStorageChange = (changes: any, areaName: string) => {
+      if (areaName === 'local' && changes['settings']?.newValue) {
+        setUiLocale(resolveLanguage(changes['settings'].newValue.uiLang));
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
   }, []);
 
   // Helper to disconnect port
@@ -88,7 +102,7 @@ export function App() {
     const targetModelKey = overrideModelKey || selectedModelKey;
     const [profileId, modelName] = targetModelKey.split(':');
     if (!profileId || !modelName) {
-      setError('未找到可用的翻译模型，请在设置中配置');
+      setError(t('noModelConfigured', undefined, uiLocale));
       return;
     }
 
@@ -147,7 +161,7 @@ export function App() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || '发起请求失败');
+      setError(err?.message || t('requestFailed', undefined, uiLocale));
       setIsLoading(false);
     }
   };
@@ -451,7 +465,7 @@ export function App() {
           className="llm-trigger-btn"
           style={{ left: `${buttonPos.x}px`, top: `${buttonPos.y}px` }}
           onClick={() => startTranslation(false)}
-          title="点击翻译选中文本"
+          title={t('triggerButtonTitle', undefined, uiLocale)}
         >
           <svg viewBox="0 0 24 24">
             <path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" />
@@ -486,7 +500,9 @@ export function App() {
           <div className="llm-card-header" onMouseDown={handleDragStart}>
             <div className="llm-header-left">
               <span className="llm-badge">
-                {detectedLang ? `源: ${detectedLang.toUpperCase()}` : '划词翻译'}
+                {detectedLang
+                  ? t('sourceLangPrefix', { lang: detectedLang.toUpperCase() }, uiLocale)
+                  : t('cardTitle', undefined, uiLocale)}
               </span>
               {models.length > 0 && (
                 <select
@@ -509,7 +525,7 @@ export function App() {
               <button
                 className={`llm-icon-btn ${isPinned ? 'active' : ''}`}
                 onClick={() => setIsPinned(!isPinned)}
-                title={isPinned ? '取消固定' : '固定卡片'}
+                title={isPinned ? t('unpinCard', undefined, uiLocale) : t('pinCard', undefined, uiLocale)}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
@@ -525,7 +541,7 @@ export function App() {
                   setShowButton(false);
                   setIsPinned(false);
                 }}
-                title="关闭"
+                title={t('close', undefined, uiLocale)}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
@@ -542,7 +558,7 @@ export function App() {
             {isLoading && !translation && (
               <div className="llm-loading-indicator">
                 <div className="llm-spinner"></div>
-                <span>正在翻译中...</span>
+                <span>{t('translating', undefined, uiLocale)}</span>
               </div>
             )}
 
@@ -550,13 +566,13 @@ export function App() {
               <div className="llm-error-box">
                 <span>{error}</span>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                  {error.includes('设置') && (
+                  {(error.includes('设置') || error.includes('Settings')) && (
                     <button
                       className="llm-action-btn"
                       onClick={() => chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' })}
-                      title="打开扩展设置页面"
+                      title={t('settings', undefined, uiLocale)}
                     >
-                      前往设置 ↗
+                      {t('goToSettings', undefined, uiLocale)}
                     </button>
                   )}
                   {canRetry && (
@@ -564,7 +580,7 @@ export function App() {
                       className="llm-action-btn"
                       onClick={() => startTranslation(true)}
                     >
-                      重试
+                      {t('retry', undefined, uiLocale)}
                     </button>
                   )}
                 </div>
@@ -585,16 +601,16 @@ export function App() {
                 className={`llm-action-btn ${copied ? 'success' : ''}`}
                 onClick={handleCopy}
                 disabled={!translation}
-                title="复制译文"
+                title={t('copyTranslationTitle', undefined, uiLocale)}
               >
-                {copied ? '已复制 ✓' : '复制'}
+                {copied ? t('copiedCheck', undefined, uiLocale) : t('copy', undefined, uiLocale)}
               </button>
               <button
                 className="llm-action-btn"
                 onClick={() => startTranslation(true)}
-                title="重新请求（绕过缓存）"
+                title={t('bypassCacheTitle', undefined, uiLocale)}
               >
-                重试
+                {t('retry', undefined, uiLocale)}
               </button>
             </div>
           </div>

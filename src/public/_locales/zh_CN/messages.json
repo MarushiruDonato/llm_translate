@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "LLM 划词翻译",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "基于大语言模型的网页划词翻译扩展，支持 OpenAI、Anthropic 等多协议流式输出。",
+    "description": "Extension description"
+  },
+  "contextMenuTranslate": {
+    "message": "翻译所选内容",
+    "description": "Context menu title for translating selected text"
+  }
+}

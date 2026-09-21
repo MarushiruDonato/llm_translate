@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'preact/hooks';
 import { clearHistory, deleteHistoryItem, getHistory, getSettings, saveSettings } from '../../storage';
 import { AppSettings, HistoryEntry } from '../../types';
+import { resolveLanguage, SupportedLocale, t } from '../../utils/i18n';
 import './styles.css';
 
 export function App() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [locale, setLocale] = useState<SupportedLocale>('zh_CN');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState('');
   const [visibleCount, setVisibleCount] = useState(20);
@@ -13,6 +15,7 @@ export function App() {
   const loadData = async () => {
     const s = await getSettings();
     setSettings(s);
+    setLocale(resolveLanguage(s.uiLang));
     const h = await getHistory();
     setHistory(h);
   };
@@ -34,7 +37,7 @@ export function App() {
   };
 
   const handleClearHistory = async () => {
-    if (confirm('确定要清空所有翻译历史记录吗？此操作不可撤销。')) {
+    if (confirm(t('clearHistoryConfirm', undefined, locale))) {
       await clearHistory();
       setHistory([]);
     }
@@ -73,7 +76,7 @@ export function App() {
       const u = new URL(urlStr);
       return u.hostname;
     } catch {
-      return '对应网页';
+      return locale === 'zh_CN' ? '对应网页' : 'Page';
     }
   };
 
@@ -88,11 +91,19 @@ export function App() {
   const formatTime = (timestamp: number) => {
     const now = Date.now();
     const diff = Math.floor((now - timestamp) / 1000); // in seconds
-    if (diff < 60) return '刚刚';
-    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
-    const date = new Date(timestamp);
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
+    if (locale === 'zh_CN') {
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+      const date = new Date(timestamp);
+      return `${date.getMonth() + 1}月${date.getDate()}日`;
+    } else {
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
   };
 
   return (
@@ -101,12 +112,12 @@ export function App() {
       <header className="popup-header">
         <div className="header-title-group">
           <img src="/icons/icon-48.png" alt="Logo" className="app-logo" />
-          <span className="header-title">LLM 划词翻译</span>
+          <span className="header-title">{t('popupTitle', undefined, locale)}</span>
         </div>
 
         <div className="header-controls">
           {/* Global Enable Toggle */}
-          <label className="switch" title={settings?.globalEnabled ? '点击暂停翻译' : '点击开启翻译'}>
+          <label className="switch" title={settings?.globalEnabled ? (locale === 'zh_CN' ? '点击暂停翻译' : 'Click to pause translation') : (locale === 'zh_CN' ? '点击开启翻译' : 'Click to enable translation')}>
             <input
               type="checkbox"
               checked={settings?.globalEnabled ?? true}
@@ -116,7 +127,7 @@ export function App() {
           </label>
 
           {/* Settings button */}
-          <button className="icon-btn" onClick={handleOpenOptions} title="打开设置">
+          <button className="icon-btn" onClick={handleOpenOptions} title={t('settings', undefined, locale)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
             </svg>
@@ -127,7 +138,7 @@ export function App() {
       {/* Pause Notification Banner */}
       {settings && !settings.globalEnabled && (
         <div className="pause-banner">
-          <span>⚠️ 划词翻译已全局暂停，在此处可随时重新开启</span>
+          <span>⚠️ {t('globallyDisabledBanner', undefined, locale)}</span>
         </div>
       )}
 
@@ -136,7 +147,7 @@ export function App() {
         <input
           type="text"
           className="search-input"
-          placeholder="搜索历史记录（原文或译文）..."
+          placeholder={t('searchHistoryPlaceholder', undefined, locale)}
           value={search}
           onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
         />
@@ -144,10 +155,10 @@ export function App() {
 
       {/* Subheader Stats */}
       <div className="history-stats">
-        <span>共 {filteredHistory.length} 条记录</span>
+        <span>{t('totalEntries', { count: filteredHistory.length }, locale)}</span>
         {history.length > 0 && (
           <button className="clear-btn" onClick={handleClearHistory}>
-            清空历史
+            {t('clearHistory', undefined, locale)}
           </button>
         )}
       </div>
@@ -159,9 +170,9 @@ export function App() {
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{search ? '未找到匹配的翻译历史' : '暂无翻译历史'}</span>
+            <span>{search ? (locale === 'zh_CN' ? '未找到匹配的翻译历史' : 'No matching history found') : t('emptyHistory', undefined, locale)}</span>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-              在网页上划选文字即可快速翻译
+              {t('emptyHistorySub', undefined, locale)}
             </span>
           </div>
         ) : (
@@ -181,7 +192,7 @@ export function App() {
                   <a
                     href={item.sourceUrl}
                     className="source-url-link"
-                    title={`点击打开网页并定位选中文本：\n${item.sourceUrl}`}
+                    title={item.sourceUrl}
                     onClick={(e) => {
                       e.preventDefault();
                       handleOpenUrl(item.sourceUrl!);
@@ -206,24 +217,25 @@ export function App() {
                   <button
                     className="mini-btn primary-link"
                     onClick={() => handleOpenUrl(item.sourceUrl!)}
-                    title="在浏览器新标签页中打开对应网页并自动滚动高亮选中文本"
+                    title={t('openWebpage', undefined, locale)}
                   >
-                    打开网页 ↗
+                    {t('openWebpage', undefined, locale)}
                   </button>
                 )}
                 <button
                   className={`mini-btn ${copiedId === item.id ? 'copied' : ''}`}
                   onClick={() => handleCopy(item.id, item.translation)}
+                  title={t('copyTranslationTitle', undefined, locale)}
                 >
-                  {copiedId === item.id ? '已复制 ✓' : '复制'}
+                  {copiedId === item.id ? t('copiedCheck', undefined, locale) : t('copy', undefined, locale)}
                 </button>
                 <button
                   className="mini-btn"
                   style={{ color: 'var(--danger)' }}
                   onClick={() => handleDeleteItem(item.id)}
-                  title="删除该条记录"
+                  title={t('delete', undefined, locale)}
                 >
-                  删除
+                  {t('delete', undefined, locale)}
                 </button>
               </div>
             </div>
@@ -235,7 +247,7 @@ export function App() {
             className="load-more-btn"
             onClick={() => setVisibleCount((prev) => prev + 20)}
           >
-            加载更多 ({filteredHistory.length - visibleCount})
+            {t('loadMore', undefined, locale)} ({filteredHistory.length - visibleCount})
           </button>
         )}
       </div>

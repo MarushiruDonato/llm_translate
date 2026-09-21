@@ -2,7 +2,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { getAdapter } from '../../adapters';
 import { clearHistory, getProfiles, getSettings, saveProfiles, saveSettings } from '../../storage';
 import { AppSettings, ModelConfig, Profile, ProtocolType } from '../../types';
-import { DEFAULT_SETTINGS, TARGET_LANGUAGES } from '../../utils/constants';
+import { DEFAULT_SETTINGS, TARGET_LANGUAGES, UI_LANGUAGES } from '../../utils/constants';
+import { resolveLanguage, SupportedLocale, t } from '../../utils/i18n';
 import { cleanBaseUrl, normalizeToMatchPattern } from '../../utils/url';
 import './styles.css';
 
@@ -11,6 +12,7 @@ type Tab = 'profiles' | 'translation' | 'triggers' | 'about';
 export function App() {
   const [activeTab, setActiveTab] = useState<Tab>('profiles');
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const locale: SupportedLocale = resolveLanguage(settings.uiLang);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [alert, setAlert] = useState<{ type: 'success' | 'danger' | 'warning'; message: string } | null>(null);
 
@@ -44,19 +46,19 @@ export function App() {
     if (!editingProfile) return;
 
     if (!editingProfile.name.trim()) {
-      showAlert('danger', '配置档名称不能为空');
+      showAlert('danger', locale === 'zh_CN' ? '配置档名称不能为空' : 'Profile name cannot be empty');
       return;
     }
     if (!editingProfile.baseUrl.trim()) {
-      showAlert('danger', 'Base URL 不能为空');
+      showAlert('danger', locale === 'zh_CN' ? 'Base URL 不能为空' : 'Base URL cannot be empty');
       return;
     }
     if (!editingProfile.apiKey.trim()) {
-      showAlert('danger', 'API Key 不能为空');
+      showAlert('danger', locale === 'zh_CN' ? 'API Key 不能为空' : 'API Key cannot be empty');
       return;
     }
     if (editingProfile.models.length === 0) {
-      showAlert('danger', '请至少添加一个模型');
+      showAlert('danger', t('needAtLeastOneModel', undefined, locale));
       return;
     }
 
@@ -65,7 +67,7 @@ export function App() {
     try {
       matchPattern = normalizeToMatchPattern(editingProfile.baseUrl);
     } catch (err: any) {
-      showAlert('danger', err?.message || 'Base URL 格式无效');
+      showAlert('danger', err?.message || (locale === 'zh_CN' ? 'Base URL 格式无效' : 'Invalid Base URL'));
       return;
     }
 
@@ -80,14 +82,16 @@ export function App() {
         granted = true; // Fallback for dev/mock
       }
     } catch (err: any) {
-      showAlert('danger', `请求权限时出错: ${err?.message}`);
+      showAlert('danger', `Error requesting permission: ${err?.message}`);
       return;
     }
 
     if (!granted) {
       showAlert(
         'danger',
-        `未获得端点 "${matchPattern}" 的网络访问权限。由于浏览器安全策略限制，未授权的端点无法发送翻译请求。`
+        locale === 'zh_CN'
+          ? `未获得端点 "${matchPattern}" 的网络访问权限。由于浏览器安全策略限制，未授权的端点无法发送翻译请求。`
+          : `Network permission for "${matchPattern}" was not granted. Due to browser security policies, translation requests cannot be sent to unauthorized endpoints.`
       );
       return;
     }
@@ -109,19 +113,20 @@ export function App() {
     setProfiles(updatedProfiles);
     setEditingProfile(null);
     setIsCreating(false);
-    showAlert('success', `配置档 "${normalizedProfile.name}" 保存成功，已授权 ${matchPattern}`);
+    showAlert('success', locale === 'zh_CN' ? `配置档 "${normalizedProfile.name}" 保存成功` : `Profile "${normalizedProfile.name}" saved successfully`);
   };
 
   const handleDeleteProfile = async (id: string) => {
     if (profiles.length <= 1) {
-      showAlert('warning', '请保留至少一个配置档');
+      showAlert('warning', t('needAtLeastOneProfile', undefined, locale));
       return;
     }
-    if (confirm('确定要删除该配置档吗？')) {
+    const target = profiles.find((p) => p.id === id);
+    if (confirm(t('deleteProfileConfirm', { name: target?.name || '' }, locale))) {
       const updated = profiles.filter((p) => p.id !== id);
       await saveProfiles(updated);
       setProfiles(updated);
-      showAlert('success', '配置档已删除');
+      showAlert('success', locale === 'zh_CN' ? '配置档已删除' : 'Profile deleted');
     }
   };
 
@@ -131,7 +136,7 @@ export function App() {
       defaultModelId: modelId,
     });
     setSettings(updated);
-    showAlert('success', '已设为默认模型');
+    showAlert('success', locale === 'zh_CN' ? '已设为默认模型' : 'Set as default model');
   };
 
   // Test Connection (Ping -> Pong)
@@ -143,7 +148,7 @@ export function App() {
       setTestResult({
         profileId: profile.id,
         success: false,
-        message: 'Base URL 不能为空',
+        message: locale === 'zh_CN' ? 'Base URL 不能为空' : 'Base URL cannot be empty',
       });
       setTestingProfileId(null);
       return;
@@ -153,7 +158,7 @@ export function App() {
       setTestResult({
         profileId: profile.id,
         success: false,
-        message: 'API Key 不能为空',
+        message: locale === 'zh_CN' ? 'API Key 不能为空' : 'API Key cannot be empty',
       });
       setTestingProfileId(null);
       return;
@@ -164,7 +169,7 @@ export function App() {
       setTestResult({
         profileId: profile.id,
         success: false,
-        message: '该配置档下没有已启用的模型',
+        message: locale === 'zh_CN' ? '该配置档下没有已启用的模型' : 'No enabled models under this profile',
       });
       setTestingProfileId(null);
       return;
@@ -181,7 +186,10 @@ export function App() {
             setTestResult({
               profileId: profile.id,
               success: false,
-              message: `未获得对端点 "${matchPattern}" 的访问权限，无法发起测试`,
+              message:
+                locale === 'zh_CN'
+                  ? `未获得对端点 "${matchPattern}" 的访问权限，无法发起测试`
+                  : `Permission not granted for "${matchPattern}", unable to test`,
             });
             setTestingProfileId(null);
             return;
@@ -219,13 +227,18 @@ export function App() {
       setTestResult({
         profileId: profile.id,
         success: true,
-        message: `连通成功！发送: ping ➔ 响应: ${cleanOutput || 'pong'} (耗时 ${elapsed}ms)`,
+        message:
+          locale === 'zh_CN'
+            ? `连通成功！发送: ping ➔ 响应: ${cleanOutput || 'pong'} (耗时 ${elapsed}ms)`
+            : `Connected! ping ➔ ${cleanOutput || 'pong'} (${elapsed}ms)`,
       });
     } catch (err: any) {
       setTestResult({
         profileId: profile.id,
         success: false,
-        message: err?.message || '连接失败，请检查 API Key 或端点地址',
+        message:
+          err?.message ||
+          (locale === 'zh_CN' ? '连接失败，请检查 API Key 或端点地址' : 'Connection failed. Please check API Key or Base URL'),
       });
     } finally {
       setTestingProfileId(null);
@@ -235,7 +248,7 @@ export function App() {
   const handleSaveSettings = async (partial: Partial<AppSettings>) => {
     const updated = await saveSettings(partial);
     setSettings(updated);
-    showAlert('success', '设置已保存');
+    showAlert('success', t('settingsSaved', undefined, locale));
   };
 
   const handleOpenShortcuts = () => {
@@ -251,8 +264,12 @@ export function App() {
         <div className="header-brand">
           <img src="/icons/icon-48.png" alt="Logo" className="brand-logo" />
           <div>
-            <h1 className="brand-title">LLM 划词翻译</h1>
-            <p className="brand-subtitle">自由配置大模型端点，安全私密，零中转零数据收集</p>
+            <h1 className="brand-title">{t('optionsTitle', undefined, locale)}</h1>
+            <p className="brand-subtitle">
+              {locale === 'zh_CN'
+                ? '自由配置大模型端点，安全私密，零中转零数据收集'
+                : 'Directly connect to your LLM endpoints with privacy, zero tracking, and no intermediary servers'}
+            </p>
           </div>
         </div>
       </header>
@@ -263,25 +280,25 @@ export function App() {
           className={`tab-btn ${activeTab === 'profiles' ? 'active' : ''}`}
           onClick={() => setActiveTab('profiles')}
         >
-          模型配置档
+          {t('profilesTitle', undefined, locale)}
         </button>
         <button
           className={`tab-btn ${activeTab === 'translation' ? 'active' : ''}`}
           onClick={() => setActiveTab('translation')}
         >
-          翻译选项
+          {t('translationSettings', undefined, locale)}
         </button>
         <button
           className={`tab-btn ${activeTab === 'triggers' ? 'active' : ''}`}
           onClick={() => setActiveTab('triggers')}
         >
-          快捷与触发
+          {locale === 'zh_CN' ? '触发与快捷' : 'Triggers & Shortcuts'}
         </button>
         <button
           className={`tab-btn ${activeTab === 'about' ? 'active' : ''}`}
           onClick={() => setActiveTab('about')}
         >
-          历史与关于
+          {locale === 'zh_CN' ? '存储与关于' : 'Storage & About'}
         </button>
       </nav>
 
@@ -293,9 +310,11 @@ export function App() {
         <section className="panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h2 className="panel-title">LLM 配置档管理</h2>
+              <h2 className="panel-title">{t('profilesTitle', undefined, locale)}</h2>
               <p className="panel-desc">
-                配置您自己的 API Key。保存配置时浏览器将弹出原生授权弹窗以申请端点访问权限。
+                {locale === 'zh_CN'
+                  ? '配置您自己的 API Key。保存配置时浏览器将弹出原生授权弹窗以申请端点访问权限。'
+                  : 'Configure your own API Keys. When saving, the browser requests native origin permissions.'}
               </p>
             </div>
             {!editingProfile && (
@@ -305,7 +324,7 @@ export function App() {
                   setIsCreating(true);
                   setEditingProfile({
                     id: `profile-${Date.now()}`,
-                    name: '新配置档',
+                    name: locale === 'zh_CN' ? '新配置档' : 'New Profile',
                     baseUrl: 'https://api.openai.com/v1',
                     apiKey: '',
                     protocol: 'openai-messages',
@@ -320,7 +339,7 @@ export function App() {
                   });
                 }}
               >
-                + 添加配置档
+                {t('addProfile', undefined, locale)}
               </button>
             )}
           </div>
@@ -329,11 +348,13 @@ export function App() {
           {editingProfile && (
             <div className="profile-card" style={{ borderColor: 'var(--primary)' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 600 }}>
-                {isCreating ? '新建配置档' : `编辑配置档: ${editingProfile.name}`}
+                {isCreating
+                  ? (locale === 'zh_CN' ? '新建配置档' : 'New Profile')
+                  : `${locale === 'zh_CN' ? '编辑配置档' : 'Edit Profile'}: ${editingProfile.name}`}
               </h3>
 
               <div className="form-group">
-                <label className="form-label">配置档显示名称</label>
+                <label className="form-label">{t('profileName', undefined, locale)}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -341,12 +362,12 @@ export function App() {
                   onInput={(e) =>
                     setEditingProfile({ ...editingProfile, name: (e.target as HTMLInputElement).value })
                   }
-                  placeholder="例如: DeepSeek / OpenAI / 本地 Ollama"
+                  placeholder="DeepSeek / OpenAI / Ollama"
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Base URL (API 端点)</label>
+                <label className="form-label">{t('apiEndpoint', undefined, locale)}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -354,15 +375,17 @@ export function App() {
                   onInput={(e) =>
                     setEditingProfile({ ...editingProfile, baseUrl: (e.target as HTMLInputElement).value })
                   }
-                  placeholder="例如: https://api.deepseek.com/v1"
+                  placeholder="https://api.deepseek.com/v1"
                 />
                 <span className="form-hint">
-                  保存时会自动提取并请求授权 Match Pattern (如 https://api.deepseek.com/*)
+                  {locale === 'zh_CN'
+                    ? '保存时会自动提取并请求授权 Match Pattern (如 https://api.deepseek.com/*)'
+                    : 'Origin match pattern will be extracted and requested upon saving (e.g. https://api.openai.com/*)'}
                 </span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">API Key</label>
+                <label className="form-label">{t('apiKey', undefined, locale)}</label>
                 <input
                   type="password"
                   className="form-input"
@@ -372,11 +395,13 @@ export function App() {
                   }
                   placeholder="sk-..."
                 />
-                <span className="form-hint">密钥仅保存在本地 chrome.storage.local</span>
+                <span className="form-hint">
+                  {locale === 'zh_CN' ? '密钥仅保存在本地 chrome.storage.local' : 'API Key is securely stored in local chrome.storage.local only'}
+                </span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">API 协议格式</label>
+                <label className="form-label">{t('protocol', undefined, locale)}</label>
                 <select
                   className="form-select"
                   value={editingProfile.protocol}
@@ -396,7 +421,7 @@ export function App() {
               {/* Models sub-list */}
               <div className="models-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, fontSize: '13px' }}>包含模型列表</span>
+                  <span style={{ fontWeight: 600, fontSize: '13px' }}>{t('modelsList', undefined, locale)}</span>
                   <button
                     className="btn btn-sm"
                     onClick={() => {
@@ -412,7 +437,7 @@ export function App() {
                       });
                     }}
                   >
-                    + 添加模型
+                    {t('addModel', undefined, locale)}
                   </button>
                 </div>
 
@@ -427,7 +452,7 @@ export function App() {
                           updatedModels[idx] = { ...m, enabled: (e.target as HTMLInputElement).checked };
                           setEditingProfile({ ...editingProfile, models: updatedModels });
                         }}
-                        title="是否在悬浮卡片下拉列表中显示"
+                        title={locale === 'zh_CN' ? '是否在悬浮卡片下拉列表中显示' : 'Enable in model dropdown list'}
                       />
                       <input
                         type="text"
@@ -439,7 +464,7 @@ export function App() {
                           updatedModels[idx] = { ...m, name: (e.target as HTMLInputElement).value };
                           setEditingProfile({ ...editingProfile, models: updatedModels });
                         }}
-                        placeholder="模型名，如 deepseek-chat"
+                        placeholder={locale === 'zh_CN' ? '模型名，如 deepseek-chat' : 'Model name, e.g. gpt-4o-mini'}
                       />
                       <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                         Temp:
@@ -468,7 +493,7 @@ export function App() {
                         setEditingProfile({ ...editingProfile, models: updatedModels });
                       }}
                     >
-                      删除
+                      {t('delete', undefined, locale)}
                     </button>
                   </div>
                 ))}
@@ -486,7 +511,7 @@ export function App() {
                   onClick={() => handleTestConnection(editingProfile)}
                   disabled={testingProfileId === editingProfile.id}
                 >
-                  {testingProfileId === editingProfile.id ? '测试中...' : '测试连接 (ping)'}
+                  {testingProfileId === editingProfile.id ? t('testingConnection', undefined, locale) : `${t('testConnection', undefined, locale)} (ping)`}
                 </button>
                 <button
                   className="btn"
@@ -495,10 +520,10 @@ export function App() {
                     setIsCreating(false);
                   }}
                 >
-                  取消
+                  {t('cancel', undefined, locale)}
                 </button>
                 <button className="btn btn-primary" onClick={handleSaveProfile}>
-                  保存配置并授权
+                  {locale === 'zh_CN' ? '保存配置并授权' : 'Save & Grant Permissions'}
                 </button>
               </div>
             </div>
@@ -520,7 +545,7 @@ export function App() {
                       onClick={() => handleTestConnection(profile)}
                       disabled={testingProfileId === profile.id}
                     >
-                      {testingProfileId === profile.id ? '测试中...' : '测试连接'}
+                      {testingProfileId === profile.id ? t('testingConnection', undefined, locale) : t('testConnection', undefined, locale)}
                     </button>
                     <button
                       className="btn btn-sm"
@@ -529,20 +554,20 @@ export function App() {
                         setEditingProfile(JSON.parse(JSON.stringify(profile)));
                       }}
                     >
-                      编辑
+                      {locale === 'zh_CN' ? '编辑' : 'Edit'}
                     </button>
                     <button
                       className="btn btn-sm btn-danger"
                       onClick={() => handleDeleteProfile(profile.id)}
                     >
-                      删除
+                      {t('delete', undefined, locale)}
                     </button>
                   </div>
                 </div>
 
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  端点: <code>{profile.baseUrl}</code> | Key:{' '}
-                  <code>{profile.apiKey ? `${profile.apiKey.slice(0, 7)}...` : '未配置'}</code>
+                  {locale === 'zh_CN' ? '端点' : 'Endpoint'}: <code>{profile.baseUrl}</code> | Key:{' '}
+                  <code>{profile.apiKey ? `${profile.apiKey.slice(0, 7)}...` : (locale === 'zh_CN' ? '未配置' : 'None')}</code>
                 </div>
 
                 {/* Test Result alert */}
@@ -554,7 +579,7 @@ export function App() {
 
                 {/* Models List */}
                 <div className="models-section">
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>模型列表:</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>{t('modelsList', undefined, locale)}:</span>
                   {profile.models.map((m) => {
                     const isDefault =
                       settings.defaultProfileId === profile.id && settings.defaultModelId === m.id;
@@ -565,7 +590,7 @@ export function App() {
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             (Temp: {m.params?.temperature ?? 0.7})
                           </span>
-                          {isDefault && <span className="default-tag">默认模型</span>}
+                          {isDefault && <span className="default-tag">{t('defaultModel', undefined, locale)}</span>}
                         </div>
 
                         <div>
@@ -574,7 +599,7 @@ export function App() {
                               className="btn btn-sm"
                               onClick={() => handleSetDefaultModel(profile.id, m.id)}
                             >
-                              设为默认
+                              {t('setDefault', undefined, locale)}
                             </button>
                           )}
                         </div>
@@ -592,12 +617,35 @@ export function App() {
       {activeTab === 'translation' && (
         <section className="panel">
           <div>
-            <h2 className="panel-title">翻译参数与行为</h2>
-            <p className="panel-desc">定制目标语言、系统提示词与流式推流模式。</p>
+            <h2 className="panel-title">{t('translationSettings', undefined, locale)}</h2>
+            <p className="panel-desc">
+              {locale === 'zh_CN'
+                ? '定制界面语言、目标语言、系统提示词与流式推流模式。'
+                : 'Customize interface language, target language, system prompt, and streaming.'}
+            </p>
+          </div>
+
+          {/* Interface Language */}
+          <div className="form-group">
+            <label className="form-label">{t('uiLanguageLabel', undefined, locale)}</label>
+            <select
+              className="form-select"
+              value={settings.uiLang || 'auto'}
+              onChange={(e) =>
+                handleSaveSettings({ uiLang: (e.target as HTMLSelectElement).value as any })
+              }
+            >
+              {UI_LANGUAGES.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {locale === 'zh_CN' ? item.labelZh : item.labelEn}
+                </option>
+              ))}
+            </select>
+            <span className="form-hint">{t('uiLanguageDesc', undefined, locale)}</span>
           </div>
 
           <div className="form-group">
-            <label className="form-label">默认目标语言</label>
+            <label className="form-label">{t('targetLangLabel', undefined, locale)}</label>
             <select
               className="form-select"
               value={settings.targetLang}
@@ -611,16 +659,17 @@ export function App() {
                 </option>
               ))}
             </select>
+            <span className="form-hint">{t('targetLangDesc', undefined, locale)}</span>
           </div>
 
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label">系统提示词 (System Prompt)</label>
+              <label className="form-label">{t('systemPromptLabel', undefined, locale)}</label>
               <button
                 className="btn btn-sm"
                 onClick={() => handleSaveSettings({ systemPrompt: DEFAULT_SETTINGS.systemPrompt })}
               >
-                恢复默认提示词
+                {locale === 'zh_CN' ? '恢复默认提示词' : 'Reset to Default'}
               </button>
             </div>
             <textarea
@@ -632,12 +681,15 @@ export function App() {
               }
               onBlur={() => handleSaveSettings({ systemPrompt: settings.systemPrompt })}
             />
-            <span className="form-hint">指导模型如何翻译文本与遵循输出格式要求。</span>
+            <span className="form-hint">{t('systemPromptDesc', undefined, locale)}</span>
           </div>
 
           <div className="form-group">
             <label className="form-label">
-              <span>周围上下文范围 (0–500 字符): {settings.contextChars} 字符</span>
+              <span>
+                {t('contextCharsLabel', undefined, locale)}: {settings.contextChars}{' '}
+                {locale === 'zh_CN' ? '字符' : 'chars'}
+              </span>
             </label>
             <input
               type="range"
@@ -650,9 +702,7 @@ export function App() {
                 handleSaveSettings({ contextChars: val });
               }}
             />
-            <span className="form-hint">
-              设为 0 表示不提取周围上下文。设置大于 0 可辅助模型理解段落语境（但仅翻译用户划选文字）。
-            </span>
+            <span className="form-hint">{t('contextCharsDesc', undefined, locale)}</span>
           </div>
 
           <div className="form-group">
@@ -664,10 +714,10 @@ export function App() {
                   handleSaveSettings({ streaming: (e.target as HTMLInputElement).checked })
                 }
               />
-              <span style={{ fontWeight: 500 }}>开启流式逐字输出 (SSE Stream)</span>
+              <span style={{ fontWeight: 500 }}>{t('streamingLabel', undefined, locale)} (SSE Stream)</span>
             </label>
             <span className="form-hint" style={{ marginLeft: '24px' }}>
-              开启后模型将逐字打字推流展示；关闭后将在全部生成完毕后一次性呈现。
+              {t('streamingDesc', undefined, locale)}
             </span>
           </div>
         </section>
@@ -677,8 +727,12 @@ export function App() {
       {activeTab === 'triggers' && (
         <section className="panel">
           <div>
-            <h2 className="panel-title">触发方式与快捷键</h2>
-            <p className="panel-desc">配置划词后弹窗触发机制与浏览器原生快捷键。</p>
+            <h2 className="panel-title">{t('generalAndTriggers', undefined, locale)}</h2>
+            <p className="panel-desc">
+              {locale === 'zh_CN'
+                ? '配置划词后弹窗触发机制与浏览器原生快捷键。'
+                : 'Configure selection triggers and native browser keyboard shortcuts.'}
+            </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -693,8 +747,8 @@ export function App() {
                 }
               />
               <div>
-                <div style={{ fontWeight: 500 }}>划词后显示轻量悬浮图标按钮</div>
-                <div className="form-hint">划选网页文本后，在鼠标光标右上方弹出小翻译按钮，点击后开始翻译。</div>
+                <div style={{ fontWeight: 500 }}>{t('selectionButtonLabel', undefined, locale)}</div>
+                <div className="form-hint">{t('selectionButtonDesc', undefined, locale)}</div>
               </div>
             </label>
 
@@ -709,8 +763,8 @@ export function App() {
                 }
               />
               <div>
-                <div style={{ fontWeight: 500 }}>右键菜单提供「翻译所选内容」入口</div>
-                <div className="form-hint">在选中文本上点击鼠标右键，直接点击菜单项发起翻译。</div>
+                <div style={{ fontWeight: 500 }}>{t('contextMenuLabel', undefined, locale)}</div>
+                <div className="form-hint">{t('contextMenuDesc', undefined, locale)}</div>
               </div>
             </label>
 
@@ -725,8 +779,8 @@ export function App() {
                 }
               />
               <div>
-                <div style={{ fontWeight: 500 }}>启用键盘快捷键（默认 Alt+T）</div>
-                <div className="form-hint">选中网页文本后按下快捷键即可直接就地呼出翻译卡片。</div>
+                <div style={{ fontWeight: 500 }}>{t('shortcutLabel', undefined, locale)} (Alt+T)</div>
+                <div className="form-hint">{t('shortcutDesc', undefined, locale)}</div>
               </div>
             </label>
           </div>
@@ -734,13 +788,17 @@ export function App() {
           <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontWeight: 600 }}>自定义快捷键按键组合</div>
+                <div style={{ fontWeight: 600 }}>
+                  {locale === 'zh_CN' ? '自定义快捷键按键组合' : 'Custom Keyboard Shortcut'}
+                </div>
                 <div className="form-hint">
-                  受 Chrome 安全规范限制，扩展无法直接篡改系统按键，请点击前往 Chrome 扩展快捷键管理页自定义。
+                  {locale === 'zh_CN'
+                    ? '受 Chrome 安全规范限制，扩展无法直接篡改系统按键，请点击前往 Chrome 扩展快捷键管理页自定义。'
+                    : 'Due to browser security rules, shortcuts must be customized via Chrome Extension Shortcuts page.'}
                 </div>
               </div>
               <button className="btn" onClick={handleOpenShortcuts}>
-                前往自定义快捷键 ↗
+                {t('editShortcuts', undefined, locale)}
               </button>
             </div>
           </div>
@@ -751,36 +809,57 @@ export function App() {
       {activeTab === 'about' && (
         <section className="panel">
           <div>
-            <h2 className="panel-title">存储缓存与关于</h2>
-            <p className="panel-desc">管理本地缓存与历史数据，了解扩展安全机制。</p>
+            <h2 className="panel-title">{t('historySettingsTitle', undefined, locale)}</h2>
+            <p className="panel-desc">
+              {locale === 'zh_CN'
+                ? '管理本地缓存与历史数据，了解扩展安全机制。'
+                : 'Manage local history, cache entries, and review privacy guarantees.'}
+            </p>
           </div>
 
           <div className="form-group">
-            <label className="form-label">历史记录容量</label>
+            <label className="form-label">{t('historyStorageLabel', undefined, locale)}</label>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              本地 LRU 自动淘汰，上限固定为 500 条。历史记录同时兼顾本地瞬时命中缓存。
+              {t('historyStorageDesc', undefined, locale)}
             </div>
             <div style={{ marginTop: '8px' }}>
               <button
                 className="btn btn-danger"
                 onClick={async () => {
-                  if (confirm('确定要清空全部翻译历史记录吗？')) {
+                  if (confirm(t('clearHistoryConfirm', undefined, locale))) {
                     await clearHistory();
-                    showAlert('success', '所有本地历史记录已清空');
+                    showAlert('success', t('historyCleared', undefined, locale));
                   }
                 }}
               >
-                立即清空所有历史记录
+                {t('clearAllHistory', undefined, locale)}
               </button>
             </div>
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>隐私与安全保障</h3>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>
+              {locale === 'zh_CN' ? '隐私与安全保障' : 'Privacy & Security Guarantees'}
+            </h3>
             <ul style={{ paddingLeft: '18px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <li><strong>零后端服务器</strong>：浏览器直接请求用户配置的模型官方端点，不经过任何第三方中间层服务器。</li>
-              <li><strong>零数据收集</strong>：不统计、不上报、不存储任何用户的浏览行为、网页内容或个人身份。</li>
-              <li><strong>最小权限声明</strong>：不申请高危 tabs 权限，严格仅申请本地存储与按需 host 权限。</li>
+              <li>
+                <strong>{locale === 'zh_CN' ? '零后端服务器' : 'Zero Intermediary Servers'}</strong>：
+                {locale === 'zh_CN'
+                  ? '浏览器直接请求用户配置的模型官方端点，不经过任何第三方中间层服务器。'
+                  : 'Direct HTTPS communication with your designated LLM endpoints.'}
+              </li>
+              <li>
+                <strong>{locale === 'zh_CN' ? '零数据收集' : 'Zero Data Collection'}</strong>：
+                {locale === 'zh_CN'
+                  ? '不统计、不上报、不存储任何用户的浏览行为、网页内容或个人身份。'
+                  : 'No tracking, telemetry, or storage of user browsing data.'}
+              </li>
+              <li>
+                <strong>{locale === 'zh_CN' ? '最小权限声明' : 'Minimal Permissions'}</strong>：
+                {locale === 'zh_CN'
+                  ? '不申请高危 tabs 权限，严格仅申请本地存储与按需 host 权限。'
+                  : 'Only local storage and user-authorized endpoint host permissions are requested.'}
+              </li>
             </ul>
           </div>
         </section>

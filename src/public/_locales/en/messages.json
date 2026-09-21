@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "LLM Selection Translate",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "LLM-powered webpage selection translation with streaming support for OpenAI, Anthropic, and custom endpoints.",
+    "description": "Extension description"
+  },
+  "contextMenuTranslate": {
+    "message": "Translate selection",
+    "description": "Context menu title for translating selected text"
+  }
+}

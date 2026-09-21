@@ -23,7 +23,14 @@ export const TARGET_LANGUAGES = [
   { code: 'ar', label: 'العربية' },
 ];
 
+export const UI_LANGUAGES = [
+  { code: 'auto', labelZh: '跟随浏览器', labelEn: 'Auto (Follow Browser)' },
+  { code: 'zh_CN', labelZh: '简体中文', labelEn: '简体中文' },
+  { code: 'en', labelZh: 'English', labelEn: 'English' },
+] as const;
+
 export const DEFAULT_SETTINGS: AppSettings = {
+  uiLang: 'auto',
   globalEnabled: true,
   triggers: {
     selectionButton: true,

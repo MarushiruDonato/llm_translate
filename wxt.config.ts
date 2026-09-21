@@ -8,8 +8,9 @@ export default defineConfig({
     plugins: [preact() as any],
   }),
   manifest: {
-    name: 'LLM 划词翻译',
-    description: '基于大语言模型的网页划词翻译 Chrome 扩展，支持流式输出与多配置档',
+    default_locale: 'zh_CN',
+    name: '__MSG_extName__',
+    description: '__MSG_extDesc__',
     version: '0.1.0',
     permissions: ['storage', 'contextMenus'],
     optional_host_permissions: ['*://*/*'],
@@ -18,11 +19,11 @@ export default defineConfig({
         suggested_key: {
           default: 'Alt+T',
         },
-        description: '翻译当前选中文本',
+        description: '__MSG_contextMenuTranslate__',
       },
     },
     action: {
-      default_title: 'LLM 划词翻译',
+      default_title: '__MSG_extName__',
     },
     options_ui: {
       open_in_tab: true,

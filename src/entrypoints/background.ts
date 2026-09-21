@@ -5,16 +5,30 @@ import { ClientMessage, ServerMessage } from '../types';
 import { HEARTBEAT_INTERVAL_MS, MAX_SELECTION_LENGTH, PORT_NAME } from '../utils/constants';
 import { generateCacheKey } from '../utils/crypto';
 
+import { resolveLanguage, t } from '../utils/i18n';
+
 export default defineBackground(() => {
-  // 1. Initialize Context Menus
-  chrome.runtime.onInstalled.addListener(() => {
+  // 1. Initialize & Update Context Menus
+  const updateContextMenu = async () => {
+    const settings = await getSettings();
+    const locale = resolveLanguage(settings.uiLang);
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
         id: 'translate-selection-menu',
-        title: '翻译所选内容',
+        title: t('contextMenuTranslate', undefined, locale),
         contexts: ['selection'],
       });
     });
+  };
+
+  chrome.runtime.onInstalled.addListener(() => {
+    updateContextMenu();
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes['settings']) {
+      updateContextMenu();
+    }
   });
 
   // 2. Route Context Menu clicks to specific frame
