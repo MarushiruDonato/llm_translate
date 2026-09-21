@@ -417,15 +417,25 @@ export function App() {
             {error && (
               <div className="llm-error-box">
                 <span>{error}</span>
-                {canRetry && (
-                  <button
-                    className="llm-action-btn"
-                    style={{ alignSelf: 'flex-start', marginTop: '4px' }}
-                    onClick={() => startTranslation(true)}
-                  >
-                    重试
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                  {error.includes('设置') && (
+                    <button
+                      className="llm-action-btn"
+                      onClick={() => chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' })}
+                      title="打开扩展设置页面"
+                    >
+                      前往设置 ↗
+                    </button>
+                  )}
+                  {canRetry && (
+                    <button
+                      className="llm-action-btn"
+                      onClick={() => startTranslation(true)}
+                    >
+                      重试
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

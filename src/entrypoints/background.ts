@@ -44,7 +44,16 @@ export default defineBackground(() => {
     }
   });
 
-  // 4. Long-lived Port for Streaming Translation
+  // 4. Handle open options page request
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type === 'OPEN_OPTIONS_PAGE') {
+      chrome.runtime.openOptionsPage();
+      sendResponse({ success: true });
+      return true;
+    }
+  });
+
+  // 5. Long-lived Port for Streaming Translation
   chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
     if (port.name !== PORT_NAME) return;
 

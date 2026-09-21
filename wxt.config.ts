@@ -24,6 +24,9 @@ export default defineConfig({
     action: {
       default_title: 'LLM 划词翻译',
     },
+    options_ui: {
+      open_in_tab: true,
+    },
     icons: {
       16: 'icons/icon-16.png',
       48: 'icons/icon-48.png',
