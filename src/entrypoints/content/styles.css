@@ -1,0 +1,279 @@
+:host {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color-scheme: light dark;
+}
+
+/* Light Theme Variables */
+.theme-container {
+  --llm-bg: #ffffff;
+  --llm-bg-secondary: #f8fafc;
+  --llm-text: #1e293b;
+  --llm-text-muted: #64748b;
+  --llm-border: #e2e8f0;
+  --llm-primary: #3b82f6;
+  --llm-primary-hover: #2563eb;
+  --llm-primary-light: #eff6ff;
+  --llm-error-bg: #fef2f2;
+  --llm-error-text: #ef4444;
+  --llm-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+/* Dark Theme Variables */
+@media (prefers-color-scheme: dark) {
+  .theme-container {
+    --llm-bg: #1e293b;
+    --llm-bg-secondary: #0f172a;
+    --llm-text: #f8fafc;
+    --llm-text-muted: #94a3b8;
+    --llm-border: #334155;
+    --llm-primary: #3b82f6;
+    --llm-primary-hover: #60a5fa;
+    --llm-primary-light: #1e3a8a;
+    --llm-error-bg: #450a0a;
+    --llm-error-text: #f87171;
+    --llm-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  }
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Trigger Floating Button */
+.llm-trigger-btn {
+  position: absolute;
+  z-index: 2147483647;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--llm-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  user-select: none;
+}
+
+.llm-trigger-btn:hover {
+  transform: scale(1.1);
+  background: var(--llm-primary-hover);
+}
+
+.llm-trigger-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* Floating Card Container */
+.llm-card {
+  position: absolute;
+  z-index: 2147483647;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: var(--llm-bg);
+  color: var(--llm-text);
+  border: 1px solid var(--llm-border);
+  border-radius: 12px;
+  box-shadow: var(--llm-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: text;
+  animation: llm-fade-in 0.15s ease-out;
+}
+
+@keyframes llm-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Card Header */
+.llm-card-header {
+  padding: 8px 12px;
+  background: var(--llm-bg-secondary);
+  border-bottom: 1px solid var(--llm-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: grab;
+  user-select: none;
+}
+
+.llm-card-header:active {
+  cursor: grabbing;
+}
+
+.llm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.llm-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--llm-primary-light);
+  color: var(--llm-primary);
+  white-space: nowrap;
+}
+
+.llm-model-select {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--llm-border);
+  background: var(--llm-bg);
+  color: var(--llm-text);
+  outline: none;
+  cursor: pointer;
+  max-width: 140px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.llm-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.llm-icon-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--llm-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.llm-icon-btn:hover {
+  background: var(--llm-border);
+  color: var(--llm-text);
+}
+
+.llm-icon-btn.active {
+  color: var(--llm-primary);
+  background: var(--llm-primary-light);
+}
+
+/* Card Body */
+.llm-card-body {
+  padding: 12px 14px;
+  min-height: 80px;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.llm-loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--llm-text-muted);
+  font-size: 13px;
+}
+
+.llm-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--llm-border);
+  border-top-color: var(--llm-primary);
+  border-radius: 50%;
+  animation: llm-spin 0.6s linear infinite;
+}
+
+@keyframes llm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.llm-error-box {
+  padding: 8px 10px;
+  background: var(--llm-error-bg);
+  color: var(--llm-error-text);
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Card Footer */
+.llm-card-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--llm-border);
+  background: var(--llm-bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  user-select: none;
+}
+
+.llm-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.llm-cached-tag {
+  font-size: 11px;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.llm-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--llm-border);
+  background: var(--llm-bg);
+  color: var(--llm-text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.llm-action-btn:hover {
+  border-color: var(--llm-primary);
+  color: var(--llm-primary);
+}
+
+.llm-action-btn.success {
+  border-color: #10b981;
+  color: #10b981;
+}
