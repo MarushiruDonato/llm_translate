@@ -11,6 +11,7 @@ export interface TranslateOptions {
   contextAfter?: string;
   params?: ModelParams;
   streaming?: boolean;
+  rawPrompt?: boolean;
   signal?: AbortSignal;
 }
 
@@ -26,6 +27,9 @@ export interface ProtocolAdapter {
 }
 
 export function formatUserMessage(options: TranslateOptions): string {
+  if (options.rawPrompt) {
+    return options.text;
+  }
   let content = '';
   if (options.contextBefore || options.contextAfter) {
     content += '【周围上下文】：\n';

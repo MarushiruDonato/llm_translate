@@ -3,7 +3,7 @@ import { handleResponseError, parseSseStream } from '../src/adapters/sse-parser'
 import { OpenAIMessagesAdapter } from '../src/adapters/openai-messages';
 import { OpenAIResponsesAdapter } from '../src/adapters/openai-responses';
 import { AnthropicAdapter } from '../src/adapters/anthropic';
-import { getAdapter } from '../src/adapters';
+import { formatUserMessage, getAdapter } from '../src/adapters';
 
 function createMockStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -74,3 +74,33 @@ describe('getAdapter factory', () => {
     expect(getAdapter('anthropic')).toBeInstanceOf(AnthropicAdapter);
   });
 });
+
+describe('formatUserMessage with ping pong and rawPrompt', () => {
+  it('should return verbatim text when rawPrompt is true', () => {
+    const msg = formatUserMessage({
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-test',
+      model: 'gpt-4o',
+      systemPrompt: 'Respond pong',
+      targetLang: 'pong',
+      text: 'ping',
+      rawPrompt: true,
+    });
+    expect(msg).toBe('ping');
+  });
+
+  it('should wrap text in translation instructions when rawPrompt is false', () => {
+    const msg = formatUserMessage({
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-test',
+      model: 'gpt-4o',
+      systemPrompt: 'Translate',
+      targetLang: '中文',
+      text: 'hello',
+      rawPrompt: false,
+    });
+    expect(msg).toContain('请将以下内容翻译为「中文」');
+    expect(msg).toContain('hello');
+  });
+});
+

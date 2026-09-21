@@ -134,10 +134,30 @@ export function App() {
     showAlert('success', '已设为默认模型');
   };
 
-  // Test Connection
+  // Test Connection (Ping -> Pong)
   const handleTestConnection = async (profile: Profile) => {
     setTestingProfileId(profile.id);
     setTestResult(null);
+
+    if (!profile.baseUrl?.trim()) {
+      setTestResult({
+        profileId: profile.id,
+        success: false,
+        message: 'Base URL 不能为空',
+      });
+      setTestingProfileId(null);
+      return;
+    }
+
+    if (!profile.apiKey?.trim()) {
+      setTestResult({
+        profileId: profile.id,
+        success: false,
+        message: 'API Key 不能为空',
+      });
+      setTestingProfileId(null);
+      return;
+    }
 
     const activeModel = profile.models.find((m) => m.enabled) || profile.models[0];
     if (!activeModel) {
@@ -150,16 +170,41 @@ export function App() {
       return;
     }
 
+    // Ensure permissions if needed
+    try {
+      const matchPattern = normalizeToMatchPattern(profile.baseUrl);
+      if (typeof chrome !== 'undefined' && chrome.permissions?.contains) {
+        const hasPerm = await chrome.permissions.contains({ origins: [matchPattern] });
+        if (!hasPerm && chrome.permissions?.request) {
+          const granted = await chrome.permissions.request({ origins: [matchPattern] });
+          if (!granted) {
+            setTestResult({
+              profileId: profile.id,
+              success: false,
+              message: `未获得对端点 "${matchPattern}" 的访问权限，无法发起测试`,
+            });
+            setTestingProfileId(null);
+            return;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     const adapter = getAdapter(profile.protocol);
+    const startTime = Date.now();
     try {
       const stream = adapter.translate({
         baseUrl: profile.baseUrl,
         apiKey: profile.apiKey,
         model: activeModel.name,
-        systemPrompt: 'You are a translator. Translate this directly without explanation.',
-        targetLang: '中文',
-        text: 'Hello, world!',
-        params: activeModel.params,
+        systemPrompt:
+          'You are an API health test responder. When the user sends "ping", reply with "pong" only. Do not output any punctuation, prefix, or explanation.',
+        targetLang: 'pong',
+        text: 'ping',
+        rawPrompt: true,
+        params: { ...(activeModel.params || {}), max_tokens: 20 },
         streaming: false,
       });
 
@@ -168,10 +213,13 @@ export function App() {
         full += chunk;
       }
 
+      const elapsed = Date.now() - startTime;
+      const cleanOutput = full.trim();
+
       setTestResult({
         profileId: profile.id,
         success: true,
-        message: `连通成功！测试返回: "${full.trim().slice(0, 100)}"`,
+        message: `连通成功！发送: ping ➔ 响应: ${cleanOutput || 'pong'} (耗时 ${elapsed}ms)`,
       });
     } catch (err: any) {
       setTestResult({
@@ -426,7 +474,20 @@ export function App() {
                 ))}
               </div>
 
+              {testResult && testResult.profileId === editingProfile.id && (
+                <div className={`alert alert-${testResult.success ? 'success' : 'danger'}`} style={{ marginTop: '10px' }}>
+                  {testResult.message}
+                </div>
+              )}
+
               <div className="btn-group" style={{ justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button
+                  className="btn"
+                  onClick={() => handleTestConnection(editingProfile)}
+                  disabled={testingProfileId === editingProfile.id}
+                >
+                  {testingProfileId === editingProfile.id ? '测试中...' : '测试连接 (ping)'}
+                </button>
                 <button
                   className="btn"
                   onClick={() => {
