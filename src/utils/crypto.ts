@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Computes a deterministic SHA-256 hex string from an input string.
  * Uses the standard Web Crypto API (supported in MV3 Service Worker, Content Scripts, and Node 20+).
  */
@@ -18,7 +18,6 @@ export interface CacheKeyParams {
   contextAfter?: string;
   systemPrompt?: string;
   params?: Record<string, any>;
-  memory?: Array<{ source: string; translation: string }>;
 }
 
 /**
@@ -40,7 +39,6 @@ export async function generateCacheKey(params: CacheKeyParams): Promise<string> 
     (params.contextAfter || '').trim(),
     (params.systemPrompt || '').trim(),
     normalizedParams,
-    (params.memory || []).map((m) => `${m.source}=>${m.translation}`).join(';;'),
   ].join('|||');
 
   return sha256(raw);

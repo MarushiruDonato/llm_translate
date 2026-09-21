@@ -1,6 +1,6 @@
-﻿import { cleanBaseUrl } from '../utils/url';
+import { cleanBaseUrl } from '../utils/url';
 import { handleResponseError, parseSseStream } from './sse-parser';
-import { buildConversation, ProtocolAdapter, TranslateOptions } from './types';
+import { formatUserMessage, ProtocolAdapter, TranslateOptions } from './types';
 
 export class OpenAIResponsesAdapter implements ProtocolAdapter {
   protocol = 'openai-responses' as const;
@@ -9,13 +9,11 @@ export class OpenAIResponsesAdapter implements ProtocolAdapter {
     const url = `${cleanBaseUrl(options.baseUrl)}/responses`;
     const isStreaming = options.streaming !== false;
 
-    const conversation = buildConversation(options);
     const body: Record<string, any> = {
       model: options.model,
       input: [
-        { role: 'system', content: conversation.system },
-        ...conversation.memoryTurns,
-        { role: 'user', content: conversation.userMessage },
+        { role: 'system', content: options.systemPrompt },
+        { role: 'user', content: formatUserMessage(options) },
       ],
       stream: isStreaming,
       ...(options.params || {}),

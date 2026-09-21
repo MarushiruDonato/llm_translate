@@ -1,6 +1,6 @@
-﻿import { cleanBaseUrl } from '../utils/url';
+import { cleanBaseUrl } from '../utils/url';
 import { handleResponseError, parseSseStream } from './sse-parser';
-import { buildConversation, ProtocolAdapter, TranslateOptions } from './types';
+import { formatUserMessage, ProtocolAdapter, TranslateOptions } from './types';
 
 export class AnthropicAdapter implements ProtocolAdapter {
   protocol = 'anthropic' as const;
@@ -9,11 +9,10 @@ export class AnthropicAdapter implements ProtocolAdapter {
     const url = `${cleanBaseUrl(options.baseUrl)}/messages`;
     const isStreaming = options.streaming !== false;
 
-    const conversation = buildConversation(options);
     const body: Record<string, any> = {
       model: options.model,
-      system: conversation.system,
-      messages: [...conversation.memoryTurns, { role: 'user', content: conversation.userMessage }],
+      system: options.systemPrompt,
+      messages: [{ role: 'user', content: formatUserMessage(options) }],
       max_tokens: options.params?.max_tokens || 4096,
       stream: isStreaming,
       ...(options.params || {}),

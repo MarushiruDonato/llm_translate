@@ -1,8 +1,7 @@
-﻿import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { getProfiles, getSettings } from '../../storage';
-import { FlatModelOption, ServerMessage, TranslationMemoryPair } from '../../types';
+import { FlatModelOption, ServerMessage } from '../../types';
 import { PORT_NAME } from '../../utils/constants';
-import { appendMemory, boundMemory, defaultMemoryLimits } from '../../utils/memory';
 import { calculateButtonPosition, calculateFloatingPosition } from '../../utils/position';
 import { generateTextFragmentUrl } from '../../utils/url';
 
@@ -35,8 +34,6 @@ export function App() {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // 页面翻译记忆：随页面生命周期存在（刷新即重置），按 frame 隔离
-  const memoryRef = useRef<TranslationMemoryPair[]>([]);
 
   // Load available models and default settings
   useEffect(() => {
@@ -108,7 +105,6 @@ export function App() {
       const port = chrome.runtime.connect({ name: PORT_NAME });
       portRef.current = port;
 
-      let accTranslation = '';
       port.onMessage.addListener((msg: ServerMessage) => {
         if (msg.type === 'meta') {
           setIsCached(msg.cached);
@@ -116,20 +112,11 @@ export function App() {
             setDetectedLang(msg.detectedLang);
           }
         } else if (msg.type === 'chunk') {
-          accTranslation += msg.text;
           setTranslation((prev) => prev + msg.text);
           setIsLoading(false);
         } else if (msg.type === 'done') {
           setIsLoading(false);
-          // 翻译成功（含缓存命中）后写入页面记忆；同一选区重试成功覆盖末条
-          if (settings.memoryEnabled && accTranslation.trim()) {
-            memoryRef.current = appendMemory(
-              memoryRef.current,
-              selectedText,
-              accTranslation,
-              defaultMemoryLimits(settings.memoryWindowSize)
-            );
-          }
+
         } else if (msg.type === 'error') {
           setError(msg.message);
           setCanRetry(msg.canRetry);
@@ -144,9 +131,6 @@ export function App() {
       const sourceUrl = generateTextFragmentUrl(window.location.href, selectedText);
       const sourceTitle = document.title || '';
 
-      const activeMemory = settings.memoryEnabled
-        ? boundMemory(memoryRef.current, defaultMemoryLimits(settings.memoryWindowSize))
-        : [];
 
       port.postMessage({
         type: 'translate',
@@ -160,7 +144,6 @@ export function App() {
           bypassCache,
           sourceUrl,
           sourceTitle,
-          memory: activeMemory,
         },
       });
     } catch (err: any) {
