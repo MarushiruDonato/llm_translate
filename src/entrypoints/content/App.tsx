@@ -150,6 +150,9 @@ export function App() {
         return;
       }
 
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
       clearTimeout(timer);
       timer = setTimeout(async () => {
         const selection = window.getSelection();
@@ -196,7 +199,7 @@ export function App() {
         setContextBefore(ctxBefore);
         setContextAfter(ctxAfter);
 
-        const btnPos = calculateButtonPosition(rect);
+        const btnPos = calculateButtonPosition(rect, { clientX, clientY });
         setButtonPos(btnPos);
 
         const calculatedCardPos = calculateFloatingPosition(rect, 360, 220);
@@ -445,7 +448,7 @@ export function App() {
           {/* Footer */}
           <div className="llm-card-footer">
             <div className="llm-footer-left">
-              {isCached && <span className="llm-cached-tag">⚡ 缓存命中</span>}
+              {isCached && <span className="llm-cached-tag">cached</span>}
             </div>
 
             <div style={{ display: 'flex', gap: '6px' }}>

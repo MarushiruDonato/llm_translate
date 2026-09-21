@@ -372,7 +372,7 @@ export function App() {
                   }
                   placeholder="sk-..."
                 />
-                <span className="form-hint">密钥仅保存在本地 chrome.storage.local，绝不上报或泄露</span>
+                <span className="form-hint">密钥仅保存在本地 chrome.storage.local</span>
               </div>
 
               <div className="form-group">

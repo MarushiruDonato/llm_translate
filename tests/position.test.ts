@@ -45,3 +45,36 @@ describe('calculateFloatingPosition', () => {
     expect(pos.x).toBe(690);
   });
 });
+
+describe('calculateButtonPosition', () => {
+  const sampleSelection: Rect = {
+    top: 100,
+    bottom: 120,
+    left: 200,
+    right: 250,
+    width: 50,
+    height: 20,
+  };
+
+  it('should place button next to mouse cursor when mousePos is provided', () => {
+    const pos = calculateButtonPosition(sampleSelection, { clientX: 300, clientY: 150 }, 28, 28, 1000, 800, 0, 0);
+    expect(pos.x).toBe(300 + 8);
+    expect(pos.y).toBe(150 + 8);
+  });
+
+  it('should place button to left/above of mouse if near screen edges', () => {
+    // Near right-bottom corner
+    const pos = calculateButtonPosition(sampleSelection, { clientX: 990, clientY: 790 }, 28, 28, 1000, 800, 0, 0);
+    // Left of cursor: 990 - 28 - 8 = 954
+    expect(pos.x).toBe(954);
+    // Above cursor: 790 - 28 - 8 = 754
+    expect(pos.y).toBe(754);
+  });
+
+  it('should fall back to selection right edge if mousePos is not provided', () => {
+    const pos = calculateButtonPosition(sampleSelection, undefined, 28, 28, 1000, 800, 0, 0);
+    expect(pos.x).toBe(250 + 4);
+    expect(pos.y).toBe(120 - 28);
+  });
+});
+

@@ -248,10 +248,13 @@
 
 .llm-cached-tag {
   font-size: 11px;
-  color: #10b981;
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  color: var(--llm-text-muted);
+  background: var(--llm-border);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.2px;
+  user-select: none;
+  opacity: 0.8;
 }
 
 .llm-action-btn {
