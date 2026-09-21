@@ -1,4 +1,4 @@
-export type ProtocolType = 'openai-messages' | 'openai-responses' | 'anthropic';
+﻿export type ProtocolType = 'openai-messages' | 'openai-responses' | 'anthropic';
 
 export interface ModelParams {
   temperature?: number;
@@ -36,8 +36,16 @@ export interface AppSettings {
   systemPrompt: string;
   contextChars: number;
   streaming: boolean;
+  memoryEnabled: boolean;
+  memoryWindowSize: number;
   defaultProfileId: string;
   defaultModelId: string;
+}
+
+/** 页面翻译记忆：同一页面内已翻译过的「原文摘录 → 译文」对 */
+export interface TranslationMemoryPair {
+  source: string;
+  translation: string;
 }
 
 export interface TranslateRequest {
@@ -52,6 +60,8 @@ export interface TranslateRequest {
   bypassCache?: boolean;
   sourceUrl?: string;
   sourceTitle?: string;
+  /** 页面翻译记忆（Content Script 按 frame 维护，随请求重发） */
+  memory?: TranslationMemoryPair[];
 }
 
 // Port stream message types: Client -> Background

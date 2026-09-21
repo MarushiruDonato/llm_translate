@@ -1,4 +1,4 @@
-import { defineBackground } from 'wxt/sandbox';
+﻿import { defineBackground } from 'wxt/sandbox';
 import { getAdapter } from '../adapters';
 import { addHistory, findHistoryByCacheKey, getProfileById, getProfiles, getSettings } from '../storage';
 import { ClientMessage, ServerMessage } from '../types';
@@ -135,6 +135,7 @@ export default defineBackground(() => {
         contextAfter: request.contextAfter,
         systemPrompt: request.systemPrompt || settings.systemPrompt,
         params: request.params,
+        memory: request.memory,
       });
 
       // Check Cache
@@ -183,6 +184,7 @@ export default defineBackground(() => {
           contextBefore: request.contextBefore,
           contextAfter: request.contextAfter,
           params: request.params,
+          memory: request.memory,
           streaming: settings.streaming,
           signal: abortController.signal,
         });

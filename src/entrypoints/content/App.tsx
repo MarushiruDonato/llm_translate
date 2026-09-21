@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+﻿import { useEffect, useRef, useState } from 'preact/hooks';
 import { getProfiles, getSettings } from '../../storage';
-import { FlatModelOption, ServerMessage } from '../../types';
+import { FlatModelOption, ServerMessage, TranslationMemoryPair } from '../../types';
 import { PORT_NAME } from '../../utils/constants';
+import { appendMemory, boundMemory, defaultMemoryLimits } from '../../utils/memory';
 import { calculateButtonPosition, calculateFloatingPosition } from '../../utils/position';
 import { generateTextFragmentUrl } from '../../utils/url';
 
@@ -11,6 +12,9 @@ export function App() {
 
   const [showCard, setShowCard] = useState(false);
   const [cardPos, setCardPos] = useState({ x: 0, y: 0 });
+  const [cardSize, setCardSize] = useState<{ width: number; height?: number }>({ width: 360 });
+  const cardSizeRef = useRef(cardSize);
+  cardSizeRef.current = cardSize;
   const [isPinned, setIsPinned] = useState(false);
 
   const [selectedText, setSelectedText] = useState('');
@@ -30,6 +34,9 @@ export function App() {
 
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // 页面翻译记忆：随页面生命周期存在（刷新即重置），按 frame 隔离
+  const memoryRef = useRef<TranslationMemoryPair[]>([]);
 
   // Load available models and default settings
   useEffect(() => {
@@ -101,6 +108,7 @@ export function App() {
       const port = chrome.runtime.connect({ name: PORT_NAME });
       portRef.current = port;
 
+      let accTranslation = '';
       port.onMessage.addListener((msg: ServerMessage) => {
         if (msg.type === 'meta') {
           setIsCached(msg.cached);
@@ -108,10 +116,20 @@ export function App() {
             setDetectedLang(msg.detectedLang);
           }
         } else if (msg.type === 'chunk') {
+          accTranslation += msg.text;
           setTranslation((prev) => prev + msg.text);
           setIsLoading(false);
         } else if (msg.type === 'done') {
           setIsLoading(false);
+          // 翻译成功（含缓存命中）后写入页面记忆；同一选区重试成功覆盖末条
+          if (settings.memoryEnabled && accTranslation.trim()) {
+            memoryRef.current = appendMemory(
+              memoryRef.current,
+              selectedText,
+              accTranslation,
+              defaultMemoryLimits(settings.memoryWindowSize)
+            );
+          }
         } else if (msg.type === 'error') {
           setError(msg.message);
           setCanRetry(msg.canRetry);
@@ -126,6 +144,10 @@ export function App() {
       const sourceUrl = generateTextFragmentUrl(window.location.href, selectedText);
       const sourceTitle = document.title || '';
 
+      const activeMemory = settings.memoryEnabled
+        ? boundMemory(memoryRef.current, defaultMemoryLimits(settings.memoryWindowSize))
+        : [];
+
       port.postMessage({
         type: 'translate',
         request: {
@@ -138,6 +160,7 @@ export function App() {
           bypassCache,
           sourceUrl,
           sourceTitle,
+          memory: activeMemory,
         },
       });
     } catch (err: any) {
@@ -208,7 +231,11 @@ export function App() {
         const btnPos = calculateButtonPosition(rect, { clientX, clientY });
         setButtonPos(btnPos);
 
-        const calculatedCardPos = calculateFloatingPosition(rect, 360, 220);
+        const calculatedCardPos = calculateFloatingPosition(
+          rect,
+          cardSizeRef.current.width,
+          cardSizeRef.current.height || 220
+        );
         setCardPos(calculatedCardPos);
 
         if (!showCard) {
@@ -258,7 +285,11 @@ export function App() {
 
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        const calculatedPos = calculateFloatingPosition(rect, 360, 220);
+        const calculatedPos = calculateFloatingPosition(
+          rect,
+          cardSizeRef.current.width,
+          cardSizeRef.current.height || 220
+        );
 
         setSelectedText(text);
         setCardPos(calculatedPos);
@@ -301,6 +332,95 @@ export function App() {
 
     window.addEventListener('mousemove', handleDragMove);
     window.addEventListener('mouseup', handleDragEnd);
+  };
+
+  // Window resizing logic
+  const handleResizeStart = (e: MouseEvent, dir: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const cardEl = cardRef.current?.querySelector('.llm-card') as HTMLElement;
+    if (!cardEl) return;
+
+    const rect = cardEl.getBoundingClientRect();
+    const initialWidth = rect.width;
+    const initialHeight = rect.height;
+    const initialLeft = cardPos.x;
+    const initialTop = cardPos.y;
+
+    const minWidth = 280;
+    const maxWidth = Math.max(minWidth, window.innerWidth - 20);
+    const minHeight = 140;
+    const maxHeight = Math.max(minHeight, window.innerHeight - 20);
+
+    const hasEast = dir.includes('e');
+    const hasWest = dir.includes('w');
+    const hasSouth = dir.includes('s');
+    const hasNorth = dir.includes('n');
+
+    const handleResizeMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+
+      let newWidth = initialWidth;
+      let newLeft = initialLeft;
+      let newHeight = initialHeight;
+      let newTop = initialTop;
+
+      if (hasEast) {
+        newWidth = Math.max(minWidth, Math.min(maxWidth, initialWidth + dx));
+      } else if (hasWest) {
+        const rawW = initialWidth - dx;
+        if (rawW < minWidth) {
+          newWidth = minWidth;
+          newLeft = initialLeft + (initialWidth - minWidth);
+        } else if (rawW > maxWidth) {
+          newWidth = maxWidth;
+          newLeft = initialLeft - (maxWidth - initialWidth);
+        } else {
+          newWidth = rawW;
+          newLeft = initialLeft + dx;
+        }
+      }
+
+      if (hasSouth) {
+        newHeight = Math.max(minHeight, Math.min(maxHeight, initialHeight + dy));
+      } else if (hasNorth) {
+        const rawH = initialHeight - dy;
+        if (rawH < minHeight) {
+          newHeight = minHeight;
+          newTop = initialTop + (initialHeight - minHeight);
+        } else if (rawH > maxHeight) {
+          newHeight = maxHeight;
+          newTop = initialTop - (maxHeight - initialHeight);
+        } else {
+          newHeight = rawH;
+          newTop = initialTop + dy;
+        }
+      }
+
+      setCardSize((prev) => ({
+        width: hasEast || hasWest ? newWidth : prev.width,
+        height: hasNorth || hasSouth ? newHeight : prev.height,
+      }));
+
+      if (hasWest || hasNorth) {
+        setCardPos({
+          x: hasWest ? newLeft : initialLeft,
+          y: hasNorth ? newTop : initialTop,
+        });
+      }
+    };
+
+    const handleResizeEnd = () => {
+      window.removeEventListener('mousemove', handleResizeMove);
+      window.removeEventListener('mouseup', handleResizeEnd);
+    };
+
+    window.addEventListener('mousemove', handleResizeMove);
+    window.addEventListener('mouseup', handleResizeEnd);
   };
 
   // Copy to clipboard
@@ -360,8 +480,25 @@ export function App() {
       {showCard && (
         <div
           className="llm-card"
-          style={{ left: `${cardPos.x}px`, top: `${cardPos.y}px` }}
+          style={{
+            left: `${cardPos.x}px`,
+            top: `${cardPos.y}px`,
+            width: `${cardSize.width}px`,
+            height: cardSize.height ? `${cardSize.height}px` : undefined,
+          }}
         >
+          {/* Edge and corner resize handles */}
+          <div className="llm-resize-handle llm-resize-n" onMouseDown={(e) => handleResizeStart(e, 'n')} />
+          <div className="llm-resize-handle llm-resize-s" onMouseDown={(e) => handleResizeStart(e, 's')} />
+          <div className="llm-resize-handle llm-resize-w" onMouseDown={(e) => handleResizeStart(e, 'w')} />
+          <div className="llm-resize-handle llm-resize-e" onMouseDown={(e) => handleResizeStart(e, 'e')} />
+          <div className="llm-resize-handle llm-resize-nw" onMouseDown={(e) => handleResizeStart(e, 'nw')} />
+          <div className="llm-resize-handle llm-resize-ne" onMouseDown={(e) => handleResizeStart(e, 'ne')} />
+          <div className="llm-resize-handle llm-resize-sw" onMouseDown={(e) => handleResizeStart(e, 'sw')} />
+          <div className="llm-resize-handle llm-resize-se" onMouseDown={(e) => handleResizeStart(e, 'se')}>
+            <div className="llm-resize-corner-grip" />
+          </div>
+
           {/* Header */}
           <div className="llm-card-header" onMouseDown={handleDragStart}>
             <div className="llm-header-left">
@@ -415,7 +552,10 @@ export function App() {
           </div>
 
           {/* Body */}
-          <div className="llm-card-body">
+          <div
+            className="llm-card-body"
+            style={cardSize.height ? { flex: 1, maxHeight: 'none' } : undefined}
+          >
             {isLoading && !translation && (
               <div className="llm-loading-indicator">
                 <div className="llm-spinner"></div>

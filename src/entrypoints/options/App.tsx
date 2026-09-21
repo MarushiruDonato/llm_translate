@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+﻿import { useEffect, useState } from 'preact/hooks';
 import { getAdapter } from '../../adapters';
 import { clearHistory, getProfiles, getSettings, saveProfiles, saveSettings } from '../../storage';
 import { AppSettings, ModelConfig, Profile, ProtocolType } from '../../types';
@@ -670,6 +670,46 @@ export function App() {
               开启后模型将逐字打字推流展示；关闭后将在全部生成完毕后一次性呈现。
             </span>
           </div>
+
+          <div className="form-group">
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={settings.memoryEnabled}
+                onChange={(e) =>
+                  handleSaveSettings({ memoryEnabled: (e.target as HTMLInputElement).checked })
+                }
+              />
+              <div>
+                <div style={{ fontWeight: 500 }}>页面翻译记忆（同页滚动上下文）</div>
+                <div className="form-hint">
+                  同一页面内连续翻译时，自动携带最近几条「原文 → 译文」作为对话上下文，保持术语与人称一致；刷新页面后自动清空。
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {settings.memoryEnabled && (
+            <div className="form-group">
+              <label className="form-label">
+                <span>记忆窗口大小 (1–10 条): {settings.memoryWindowSize} 条</span>
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={settings.memoryWindowSize}
+                onInput={(e) => {
+                  const val = parseInt((e.target as HTMLInputElement).value, 10);
+                  handleSaveSettings({ memoryWindowSize: val });
+                }}
+              />
+              <span className="form-hint">
+                单条原文与译文各自截断 300 字符，总预算 4000 字符，超出自动淘汰最旧条目；记忆内容会计入缓存键。
+              </span>
+            </div>
+          )}
         </section>
       )}
 

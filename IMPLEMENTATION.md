@@ -1,4 +1,4 @@
-# LLM 划词翻译扩展 — 实现计划
+﻿# LLM 划词翻译扩展 — 实现计划
 
 > 依据：[DESIGN.md](./DESIGN.md)（已确认）
 > 策略：**契约先行 + 垂直切片**。先打通一条端到端最小闭环，再逐块补全功能；每个里程碑结束时扩展都处于「可加载、可运行、可验证」状态，绝不长期停留在半成品。
@@ -12,6 +12,7 @@
 | M2 | 端到端最小闭环 | 大（2 天） |
 | M3 | 协议适配器补全 | 中（1.5 天） |
 | M4 | 悬浮卡片完整化 | 大（2 天） |
+| M4b | 页面翻译记忆 | 小（0.5–1 天） |
 | M5 | 触发方式集成 | 小（0.5 天） |
 | M6 | Popup 历史与全局开关 | 中（1 天） |
 | M7 | Options 设置页完整化 | 大（1.5–2 天） |
@@ -23,9 +24,10 @@ graph TD
   M1 --> M2[M2 端到端最小闭环]
   M2 --> M3[M3 协议补全]
   M2 --> M4[M4 卡片完整化]
+  M4 --> M4b[M4b 页面翻译记忆]
   M3 --> M5[M5 触发集成]
-  M4 --> M6[M6 Popup 历史]
-  M4 --> M7[M7 Options 完整化]
+  M4b --> M6[M6 Popup 历史]
+  M4b --> M7[M7 Options 完整化]
   M5 --> M7
   M6 --> M8[M8 发布准备]
   M7 --> M8
@@ -54,7 +56,7 @@ graph TD
 - [x] 核心类型（`src/types/`）：
   - `Profile`（name / baseUrl / apiKey / protocol / models[]）
   - `ModelConfig`（name / params / enabled）
-  - `TranslateRequest`（选中文本 / 上下文 / 系统提示词 / 目标语言 / 模型引用 / 参数）
+  - `TranslateRequest`（选中文本 / 上下文 / 系统提示词 / 目标语言 / 模型引用 / 参数 / `memory?: Array<{ source, translation }>` 页面翻译记忆）
   - `StreamMessage`：Port 双向消息的判别联合
   - `HistoryEntry`（原文 / 译文 / 模型 / 时间 / 缓存键）
   - `AppSettings`（触发开关 / 目标语言 / 系统提示词 / 上下文范围 / 流式开关）
@@ -63,7 +65,7 @@ graph TD
   - SW → CS：`{ type: "meta", cached, detectedLang }` → `{ type: "chunk", text }*` → `{ type: "done" }` 或 `{ type: "error", message, canRetry }`
   - 保活：`{ type: "ping" }`（CS 忽略）
 - [x] 存储封装（`src/storage/`）：settings / profiles / history（LRU 上限 500）
-- [x] 工具函数（`src/utils/`）：缓存键（SHA-256：文本+模型+目标语言+上下文哈希+Prompt哈希+参数哈希）、URL→MatchPattern 提取
+- [x] 工具函数（`src/utils/`）：缓存键（SHA-256：文本+模型+目标语言+上下文哈希+Prompt哈希+参数哈希+翻译记忆哈希）、URL→MatchPattern 提取
 - [x] 单元测试：LRU 淘汰、缓存键稳定性、MatchPattern 提取（含端口、子路径、非法 URL）
 
 **验收**：Vitest 全绿；类型被后续模块直接引用而无需回头修改。
@@ -113,6 +115,20 @@ graph TD
 - [x] 复制降级：`navigator.clipboard` 失败时回退 `execCommand`
 
 **验收**：全部操作手动清单过一遍；iframe 嵌套页（如在线文档站）定位正确；深色站点卡片可读；重试必出新结果（网络面板确认新请求）。
+
+## M4b — 页面翻译记忆
+
+**目标**：同页多次翻译复用滚动「原文→译文」上下文，提升术语与人称一致性。
+
+- [x] Content Script 按 frame 维护页面记忆（纯内存，随页面生命周期，刷新即重置）
+- [x] done 后追加记忆；同一选区重试成功覆盖末条；重试/切模型不清空记忆
+- [x] 三个适配器将记忆渲染为各自协议的历史轮次（messages 数组 / responses input / anthropic messages）
+- [x] 有界控制：窗口 3 条、单条 300 字符、总预算 4000 字符 FIFO 淘汰
+- [x] 缓存键并入记忆哈希；单测覆盖（空记忆时键与基础路径一致）
+- [x] 设置项：开关（默认开启）、窗口大小（1–10）
+- [x] 源语言检测不受影响（仍走 `chrome.i18n.detectLanguage`）
+
+**验收**：同页先翻含术语/人名的句子，再翻含代词或同术语的句子，译法一致；刷新页面后记忆重置；网络面板确认请求体增长有上界；关闭开关后请求体回到无记忆形态。
 
 ## M5 — 触发方式集成
 
@@ -173,6 +189,8 @@ graph TD
 | SW → CS 首消息 | `meta`（cached + detectedLang）先于一切 chunk，卡片据此渲染徽标 |
 | 缓存命中流程 | meta(cached) + 单 chunk(全量) + done，与流式降级共用同一渲染路径 |
 | 快捷键修改 | 保留跳转 `chrome://extensions/shortcuts` 方案（简单可靠，兼容旧版 Chrome） |
+| 页面记忆归属 | Content Script 内存态（= 页面生命周期），SW 不持有；按 frame 隔离 |
+| 记忆渲染方式 | 客户端重发滚动历史（user=原文摘录 / assistant=译文），不用服务端会话机制 |
 
 ## 风险清单与验证点
 
