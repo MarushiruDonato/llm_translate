@@ -9,6 +9,8 @@ export class OpenAIResponsesAdapter implements ProtocolAdapter {
     const url = `${cleanBaseUrl(options.baseUrl)}/responses`;
     const isStreaming = options.streaming !== false;
 
+    const { thinking, reasoning_effort, ...restParams } = options.params || {};
+
     const body: Record<string, any> = {
       model: options.model,
       input: [
@@ -16,8 +18,24 @@ export class OpenAIResponsesAdapter implements ProtocolAdapter {
         { role: 'user', content: formatUserMessage(options) },
       ],
       stream: isStreaming,
-      ...(options.params || {}),
+      ...restParams,
     };
+
+    if (thinking !== undefined) {
+      if (thinking) {
+        const effort = reasoning_effort || 'high';
+        body.thinking = { type: 'enabled' };
+        body.reasoning_effort = effort;
+        body.reasoning = { effort };
+      } else {
+        body.thinking = { type: 'disabled' };
+        body.reasoning_effort = 'none';
+        body.reasoning = { effort: 'none' };
+      }
+    } else if (reasoning_effort) {
+      body.reasoning_effort = reasoning_effort;
+      body.reasoning = { effort: reasoning_effort };
+    }
 
     let res: Response;
     try {
@@ -45,11 +63,29 @@ export class OpenAIResponsesAdapter implements ProtocolAdapter {
     const contentType = res.headers.get('content-type') || '';
     if (!isStreaming || !contentType.includes('text/event-stream')) {
       const json = await res.json();
-      const text =
-        json.output_text ||
-        json.output?.[0]?.content?.[0]?.text ||
-        json.choices?.[0]?.message?.content ||
-        '';
+      let text = '';
+      if (typeof json.output_text === 'string' && json.output_text) {
+        text = json.output_text;
+      } else if (Array.isArray(json.output)) {
+        // Look for the message item, skipping any reasoning items
+        const messageItem =
+          json.output.find((item: any) => item.type === 'message') ||
+          json.output.find((item: any) => item.type !== 'reasoning') ||
+          json.output[json.output.length - 1];
+
+        if (messageItem) {
+          if (typeof messageItem.content === 'string') {
+            text = messageItem.content;
+          } else if (Array.isArray(messageItem.content)) {
+            const textPart =
+              messageItem.content.find((p: any) => p.type === 'output_text' || p.type === 'text') ||
+              messageItem.content[0];
+            text = textPart?.text || '';
+          }
+        }
+      } else if (json.choices?.[0]?.message?.content) {
+        text = json.choices[0].message.content;
+      }
       yield text;
       return;
     }
@@ -64,13 +100,27 @@ export class OpenAIResponsesAdapter implements ProtocolAdapter {
       }
       try {
         const json = JSON.parse(message.data);
-        // Look for delta in response.output_text.delta or standard delta text
+
+        // Explicitly ignore reasoning / thinking delta events
+        if (
+          json.type === 'response.reasoning_text.delta' ||
+          json.type?.startsWith('response.reasoning')
+        ) {
+          continue;
+        }
+
+        // Output text delta (OpenAI Responses API / DeepSeek Responses API)
         if (json.type === 'response.output_text.delta' && typeof json.delta === 'string') {
-          yield json.delta;
-        } else if (json.delta && typeof json.delta === 'string') {
           yield json.delta;
         } else if (json.type === 'response.done' || json.type === 'response.completed') {
           break;
+        } else if (
+          (!json.type || json.type === 'message.delta' || json.type === 'content_block.delta') &&
+          typeof json.delta === 'string'
+        ) {
+          yield json.delta;
+        } else if (typeof json.choices?.[0]?.delta?.content === 'string') {
+          yield json.choices[0].delta.content;
         }
       } catch {
         // Skip unparseable lines

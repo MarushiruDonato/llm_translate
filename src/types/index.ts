@@ -1,9 +1,13 @@
 export type ProtocolType = 'openai-messages' | 'openai-responses' | 'anthropic';
 
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 export interface ModelParams {
   temperature?: number;
   max_tokens?: number;
   top_p?: number;
+  thinking?: boolean;
+  reasoning_effort?: ReasoningEffort;
   [key: string]: any;
 }
 

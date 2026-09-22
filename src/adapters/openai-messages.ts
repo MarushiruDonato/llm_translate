@@ -9,6 +9,8 @@ export class OpenAIMessagesAdapter implements ProtocolAdapter {
     const url = `${cleanBaseUrl(options.baseUrl)}/chat/completions`;
     const isStreaming = options.streaming !== false;
 
+    const { thinking, reasoning_effort, ...restParams } = options.params || {};
+
     const body: Record<string, any> = {
       model: options.model,
       messages: [
@@ -16,8 +18,19 @@ export class OpenAIMessagesAdapter implements ProtocolAdapter {
         { role: 'user', content: formatUserMessage(options) },
       ],
       stream: isStreaming,
-      ...(options.params || {}),
+      ...restParams,
     };
+
+    if (thinking !== undefined) {
+      body.thinking = { type: thinking ? 'enabled' : 'disabled' };
+      if (thinking && reasoning_effort) {
+        body.reasoning_effort = reasoning_effort;
+      } else if (!thinking) {
+        body.reasoning_effort = 'none';
+      }
+    } else if (reasoning_effort) {
+      body.reasoning_effort = reasoning_effort;
+    }
 
     let res: Response;
     try {

@@ -104,3 +104,140 @@ describe('formatUserMessage with ping pong and rawPrompt', () => {
   });
 });
 
+describe('OpenAIResponsesAdapter thinking and reasoning support', () => {
+  it('should ignore reasoning_text.delta and only yield output_text.delta in streaming', async () => {
+    const adapter = new OpenAIResponsesAdapter();
+    const stream = createMockStream([
+      'data: {"type": "response.created"}\n\n',
+      'data: {"type": "response.reasoning_text.delta", "delta": "Thinking step 1..."}\n\n',
+      'data: {"type": "response.reasoning_text.delta", "delta": "Thinking step 2..."}\n\n',
+      'data: {"type": "response.output_text.delta", "delta": "你好"}\n\n',
+      'data: {"type": "response.output_text.delta", "delta": "，世界"}\n\n',
+      'data: [DONE]\n\n',
+    ]);
+
+    const origFetch = global.fetch;
+    global.fetch = async () =>
+      new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      });
+
+    try {
+      const results: string[] = [];
+      for await (const chunk of adapter.translate({
+        baseUrl: 'https://api.deepseek.com',
+        apiKey: 'sk-test',
+        model: 'deepseek-chat',
+        systemPrompt: 'Translate',
+        targetLang: 'zh-CN',
+        text: 'hello world',
+      })) {
+        results.push(chunk);
+      }
+
+      expect(results).toEqual(['你好', '，世界']);
+      expect(results.join('')).not.toContain('Thinking');
+    } finally {
+      global.fetch = origFetch;
+    }
+  });
+
+  it('should extract message output text and skip reasoning in non-streaming', async () => {
+    const adapter = new OpenAIResponsesAdapter();
+    const mockJson = {
+      output: [
+        {
+          id: 'item_1',
+          type: 'reasoning',
+          content: [{ type: 'reasoning_text', text: 'Internal chain of thought' }],
+        },
+        {
+          id: 'item_2',
+          type: 'message',
+          content: [{ type: 'output_text', text: '你好世界' }],
+        },
+      ],
+    };
+
+    const origFetch = global.fetch;
+    global.fetch = async () =>
+      new Response(JSON.stringify(mockJson), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    try {
+      const results: string[] = [];
+      for await (const chunk of adapter.translate({
+        baseUrl: 'https://api.deepseek.com',
+        apiKey: 'sk-test',
+        model: 'deepseek-chat',
+        systemPrompt: 'Translate',
+        targetLang: 'zh-CN',
+        text: 'hello world',
+        streaming: false,
+      })) {
+        results.push(chunk);
+      }
+
+      expect(results).toEqual(['你好世界']);
+    } finally {
+      global.fetch = origFetch;
+    }
+  });
+
+  it('should send correct body payload for enabled and disabled thinking mode', async () => {
+    const adapter = new OpenAIResponsesAdapter();
+    let capturedBody: any = null;
+
+    const origFetch = global.fetch;
+    global.fetch = (async (_url: string, init?: RequestInit) => {
+      capturedBody = JSON.parse(init?.body as string);
+      return new Response(JSON.stringify({ output_text: 'pong' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as any;
+
+    try {
+      // 1. Enabled with xhigh effort
+      for await (const _ of adapter.translate({
+        baseUrl: 'https://api.deepseek.com',
+        apiKey: 'sk-test',
+        model: 'deepseek-chat',
+        systemPrompt: 'Respond pong',
+        targetLang: 'pong',
+        text: 'ping',
+        rawPrompt: true,
+        streaming: false,
+        params: { thinking: true, reasoning_effort: 'xhigh', temperature: 0.2 },
+      })) {}
+
+      expect(capturedBody.thinking).toEqual({ type: 'enabled' });
+      expect(capturedBody.reasoning_effort).toBe('xhigh');
+      expect(capturedBody.reasoning).toEqual({ effort: 'xhigh' });
+      expect(capturedBody.temperature).toBe(0.2);
+
+      // 2. Disabled
+      for await (const _ of adapter.translate({
+        baseUrl: 'https://api.deepseek.com',
+        apiKey: 'sk-test',
+        model: 'deepseek-chat',
+        systemPrompt: 'Respond pong',
+        targetLang: 'pong',
+        text: 'ping',
+        rawPrompt: true,
+        streaming: false,
+        params: { thinking: false, temperature: 0.2 },
+      })) {}
+
+      expect(capturedBody.thinking).toEqual({ type: 'disabled' });
+      expect(capturedBody.reasoning_effort).toBe('none');
+      expect(capturedBody.reasoning).toEqual({ effort: 'none' });
+    } finally {
+      global.fetch = origFetch;
+    }
+  });
+});
+

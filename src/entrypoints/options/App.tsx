@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { getAdapter } from '../../adapters';
 import { clearHistory, getProfiles, getSettings, saveProfiles, saveSettings } from '../../storage';
-import { AppSettings, ModelConfig, Profile, ProtocolType } from '../../types';
-import { DEFAULT_SETTINGS, TARGET_LANGUAGES, UI_LANGUAGES } from '../../utils/constants';
+import { AppSettings, ModelConfig, Profile, ProtocolType, ReasoningEffort } from '../../types';
+import { DEFAULT_SETTINGS, REASONING_EFFORTS, TARGET_LANGUAGES, UI_LANGUAGES } from '../../utils/constants';
 import { resolveLanguage, SupportedLocale, t } from '../../utils/i18n';
 import { cleanBaseUrl, normalizeToMatchPattern } from '../../utils/url';
 import './styles.css';
@@ -19,6 +19,7 @@ export function App() {
   // Edit Profile modal/state
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [tempInputs, setTempInputs] = useState<Record<string, string>>({});
 
   // Test connection state
   const [testingProfileId, setTestingProfileId] = useState<string | null>(null);
@@ -113,6 +114,7 @@ export function App() {
     setProfiles(updatedProfiles);
     setEditingProfile(null);
     setIsCreating(false);
+    setTempInputs({});
     showAlert('success', locale === 'zh_CN' ? `配置档 "${normalizedProfile.name}" 保存成功` : `Profile "${normalizedProfile.name}" saved successfully`);
   };
 
@@ -212,7 +214,7 @@ export function App() {
         targetLang: 'pong',
         text: 'ping',
         rawPrompt: true,
-        params: { ...(activeModel.params || {}), max_tokens: 20 },
+        params: { ...(activeModel.params || {}), max_tokens: 150 },
         streaming: false,
       });
 
@@ -489,7 +491,7 @@ export function App() {
                       {
                         id: `model-${Date.now()}`,
                         name: 'gpt-4o-mini',
-                        params: { temperature: 0.7 },
+                        params: { temperature: 0.2 },
                         enabled: true,
                       },
                     ],
@@ -585,7 +587,7 @@ export function App() {
                       const newModel: ModelConfig = {
                         id: `model-${Date.now()}`,
                         name: 'new-model',
-                        params: { temperature: 0.7 },
+                        params: { temperature: 0.2 },
                         enabled: true,
                       };
                       setEditingProfile({
@@ -598,62 +600,148 @@ export function App() {
                   </button>
                 </div>
 
-                {editingProfile.models.map((m, idx) => (
-                  <div key={m.id} className="model-row">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                      <input
-                        type="checkbox"
-                        checked={m.enabled}
-                        onChange={(e) => {
-                          const updatedModels = [...editingProfile.models];
-                          updatedModels[idx] = { ...m, enabled: (e.target as HTMLInputElement).checked };
-                          setEditingProfile({ ...editingProfile, models: updatedModels });
-                        }}
-                        title={locale === 'zh_CN' ? '是否在悬浮卡片下拉列表中显示' : 'Enable in model dropdown list'}
-                      />
-                      <input
-                        type="text"
-                        className="form-input"
-                        style={{ padding: '4px 8px', fontSize: '12px', width: '180px' }}
-                        value={m.name}
-                        onInput={(e) => {
-                          const updatedModels = [...editingProfile.models];
-                          updatedModels[idx] = { ...m, name: (e.target as HTMLInputElement).value };
-                          setEditingProfile({ ...editingProfile, models: updatedModels });
-                        }}
-                        placeholder={locale === 'zh_CN' ? '模型名，如 deepseek-chat' : 'Model name, e.g. gpt-4o-mini'}
-                      />
-                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                        Temp:
-                      </span>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="2"
-                        className="form-input"
-                        style={{ padding: '4px 8px', fontSize: '12px', width: '60px' }}
-                        value={m.params?.temperature ?? 0.7}
-                        onInput={(e) => {
-                          const val = parseFloat((e.target as HTMLInputElement).value);
-                          const updatedModels = [...editingProfile.models];
-                          updatedModels[idx] = { ...m, params: { ...m.params, temperature: isNaN(val) ? 0.7 : val } };
-                          setEditingProfile({ ...editingProfile, models: updatedModels });
-                        }}
-                      />
-                    </div>
+                {editingProfile.models.map((m, idx) => {
+                  const currentDisplayTemp =
+                    tempInputs[m.id] !== undefined ? tempInputs[m.id] : String(m.params?.temperature ?? 0.2);
 
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => {
-                        const updatedModels = editingProfile.models.filter((_, i) => i !== idx);
-                        setEditingProfile({ ...editingProfile, models: updatedModels });
-                      }}
-                    >
-                      {t('delete', undefined, locale)}
-                    </button>
-                  </div>
-                ))}
+                  return (
+                    <div key={m.id} className="model-row" style={{ gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, flexWrap: 'wrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={m.enabled}
+                          onChange={(e) => {
+                            const updatedModels = [...editingProfile.models];
+                            updatedModels[idx] = { ...m, enabled: (e.target as HTMLInputElement).checked };
+                            setEditingProfile({ ...editingProfile, models: updatedModels });
+                          }}
+                          title={locale === 'zh_CN' ? '是否在悬浮卡片下拉列表中显示' : 'Enable in model dropdown list'}
+                        />
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ padding: '4px 8px', fontSize: '12px', width: '150px' }}
+                          value={m.name}
+                          onInput={(e) => {
+                            const updatedModels = [...editingProfile.models];
+                            updatedModels[idx] = { ...m, name: (e.target as HTMLInputElement).value };
+                            setEditingProfile({ ...editingProfile, models: updatedModels });
+                          }}
+                          placeholder={locale === 'zh_CN' ? '模型名，如 deepseek-chat' : 'Model name, e.g. gpt-4o-mini'}
+                        />
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Temp:
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="form-input"
+                          style={{ padding: '4px 6px', fontSize: '12px', width: '46px', textAlign: 'center' }}
+                          value={currentDisplayTemp}
+                          onInput={(e) => {
+                            const raw = (e.target as HTMLInputElement).value;
+                            if (/^[0-2]?(\.[0-9]*)?$/.test(raw) || raw === '' || raw === '.') {
+                              setTempInputs((prev) => ({ ...prev, [m.id]: raw }));
+                              const parsed = parseFloat(raw);
+                              if (!isNaN(parsed)) {
+                                const clamped = Math.min(2, Math.max(0, parsed));
+                                const updatedModels = [...editingProfile.models];
+                                updatedModels[idx] = { ...m, params: { ...m.params, temperature: clamped } };
+                                setEditingProfile({ ...editingProfile, models: updatedModels });
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            const raw = tempInputs[m.id];
+                            if (raw !== undefined) {
+                              const parsed = parseFloat(raw);
+                              const finalVal = isNaN(parsed) ? 0.2 : Math.min(2, Math.max(0, parsed));
+                              setTempInputs((prev) => {
+                                const next = { ...prev };
+                                delete next[m.id];
+                                return next;
+                              });
+                              const updatedModels = [...editingProfile.models];
+                              updatedModels[idx] = { ...m, params: { ...m.params, temperature: finalVal } };
+                              setEditingProfile({ ...editingProfile, models: updatedModels });
+                            }
+                          }}
+                          placeholder="0.2"
+                          title={t('temperature', undefined, locale)}
+                        />
+
+                        {/* Thinking Mode Switch */}
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            marginLeft: '4px',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={m.params?.thinking ?? false}
+                            onChange={(e) => {
+                              const isChecked = (e.target as HTMLInputElement).checked;
+                              const updatedModels = [...editingProfile.models];
+                              updatedModels[idx] = {
+                                ...m,
+                                params: {
+                                  ...m.params,
+                                  thinking: isChecked,
+                                  reasoning_effort: isChecked ? (m.params?.reasoning_effort || 'medium') : m.params?.reasoning_effort,
+                                },
+                              };
+                              setEditingProfile({ ...editingProfile, models: updatedModels });
+                            }}
+                          />
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            {t('thinkingMode', undefined, locale)}
+                          </span>
+                        </label>
+
+                        {/* Reasoning Effort Select */}
+                        {m.params?.thinking && (
+                          <select
+                            className="form-select"
+                            style={{ padding: '2px 6px', fontSize: '11px', height: '26px', width: '82px' }}
+                            value={m.params?.reasoning_effort || 'medium'}
+                            onChange={(e) => {
+                              const val = (e.target as HTMLSelectElement).value as ReasoningEffort;
+                              const updatedModels = [...editingProfile.models];
+                              updatedModels[idx] = {
+                                ...m,
+                                params: { ...m.params, reasoning_effort: val },
+                              };
+                              setEditingProfile({ ...editingProfile, models: updatedModels });
+                            }}
+                            title={t('reasoningEffort', undefined, locale)}
+                          >
+                            {REASONING_EFFORTS.map((effort) => (
+                              <option key={effort} value={effort}>
+                                {effort}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => {
+                          const updatedModels = editingProfile.models.filter((_, i) => i !== idx);
+                          setEditingProfile({ ...editingProfile, models: updatedModels });
+                        }}
+                      >
+                        {t('delete', undefined, locale)}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               {testResult && testResult.profileId === editingProfile.id && (
@@ -675,6 +763,7 @@ export function App() {
                   onClick={() => {
                     setEditingProfile(null);
                     setIsCreating(false);
+                    setTempInputs({});
                   }}
                 >
                   {t('cancel', undefined, locale)}
@@ -745,7 +834,8 @@ export function App() {
                         <div className="model-info">
                           <span style={{ fontWeight: 500 }}>{m.name}</span>
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                            (Temp: {m.params?.temperature ?? 0.7})
+                            (Temp: {m.params?.temperature ?? 0.2}
+                            {m.params?.thinking ? `, ${t('thinkingMode', undefined, locale)}: ${m.params.reasoning_effort || 'medium'}` : ''})
                           </span>
                           {isDefault && <span className="default-tag">{t('defaultModel', undefined, locale)}</span>}
                         </div>

@@ -45,6 +45,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultModelId: 'deepseek-chat',
 };
 
+export const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+
 export const INITIAL_PROFILES: Profile[] = [
   {
     id: 'default-deepseek',
@@ -56,7 +58,7 @@ export const INITIAL_PROFILES: Profile[] = [
       {
         id: 'deepseek-chat',
         name: 'deepseek-chat',
-        params: { temperature: 1.0 },
+        params: { temperature: 0.2 },
         enabled: true,
       },
     ],

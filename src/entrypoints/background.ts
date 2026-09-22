@@ -140,6 +140,10 @@ export default defineBackground(() => {
       // Detect language locally
       const detectedLang = await detectLanguageLocally(request.text);
 
+      // Determine effective model params
+      const modelConfig = profile.models.find((m) => m.name === request.modelName);
+      const effectiveParams = { ...(modelConfig?.params || {}), ...(request.params || {}) };
+
       // Compute deterministic cache key
       const cacheKey = await generateCacheKey({
         text: request.text,
@@ -148,7 +152,7 @@ export default defineBackground(() => {
         contextBefore: request.contextBefore,
         contextAfter: request.contextAfter,
         systemPrompt: request.systemPrompt || settings.systemPrompt,
-        params: request.params,
+        params: effectiveParams,
       });
 
       // Check Cache
@@ -196,7 +200,7 @@ export default defineBackground(() => {
           text: request.text,
           contextBefore: request.contextBefore,
           contextAfter: request.contextAfter,
-          params: request.params,
+          params: effectiveParams,
           streaming: settings.streaming,
           signal: abortController.signal,
         });
