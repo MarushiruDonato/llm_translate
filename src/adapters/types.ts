@@ -40,7 +40,7 @@ export function formatUserMessage(options: TranslateOptions): string {
     if (options.contextAfter) {
       content += `${options.contextAfter}...\n\n`;
     }
-    content += `请只翻译[需翻译文本]为「${options.targetLang}」：\n${options.text}`;
+    content += `请只将上述「[需翻译文本]」部分翻译为「${options.targetLang}」，不要包含上下文内容和多余解释。`;
   } else {
     content = `请将以下内容翻译为「${options.targetLang}」：\n\n${options.text}`;
   }

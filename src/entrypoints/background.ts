@@ -98,7 +98,13 @@ export default defineBackground(() => {
       if (abortController) {
         abortController.abort();
       }
-      abortController = new AbortController();
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+
+      const currentController = new AbortController();
+      abortController = currentController;
 
       // Guard: Length limit
       if (request.text.length > MAX_SELECTION_LENGTH) {
@@ -146,6 +152,8 @@ export default defineBackground(() => {
 
       // Compute deterministic cache key
       const cacheKey = await generateCacheKey({
+        profileId: profile.id,
+        baseUrl: profile.baseUrl,
         text: request.text,
         model: request.modelName,
         targetLang: request.targetLang,
@@ -180,13 +188,14 @@ export default defineBackground(() => {
       sendToPort(port, { type: 'meta', cached: false, detectedLang });
 
       // Setup Heartbeat to prevent SW idle shutdown
-      heartbeatTimer = setInterval(() => {
+      const currentTimer = setInterval(() => {
         try {
           sendToPort(port, { type: 'ping' });
         } catch {
           cleanup();
         }
       }, HEARTBEAT_INTERVAL_MS);
+      heartbeatTimer = currentTimer;
 
       let fullTranslation = '';
       try {
@@ -202,16 +211,16 @@ export default defineBackground(() => {
           contextAfter: request.contextAfter,
           params: effectiveParams,
           streaming: settings.streaming,
-          signal: abortController.signal,
+          signal: currentController.signal,
         });
 
         for await (const chunk of stream) {
-          if (abortController.signal.aborted) break;
+          if (currentController.signal.aborted) break;
           fullTranslation += chunk;
           sendToPort(port, { type: 'chunk', text: chunk });
         }
 
-        if (!abortController.signal.aborted) {
+        if (!currentController.signal.aborted) {
           sendToPort(port, { type: 'done' });
 
           // Save to History (which acts as cache)
@@ -231,15 +240,15 @@ export default defineBackground(() => {
           }
         }
       } catch (err: any) {
-        if (abortController?.signal.aborted) return;
+        if (currentController.signal.aborted) return;
         sendToPort(port, {
           type: 'error',
           message: err?.message || '翻译失败，请稍后重试',
           canRetry: err?.canRetry ?? true,
         });
       } finally {
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
+        clearInterval(currentTimer);
+        if (heartbeatTimer === currentTimer) {
           heartbeatTimer = null;
         }
       }

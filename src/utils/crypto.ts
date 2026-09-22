@@ -11,6 +11,8 @@ export async function sha256(str: string): Promise<string> {
 }
 
 export interface CacheKeyParams {
+  profileId?: string;
+  baseUrl?: string;
   text: string;
   model: string;
   targetLang: string;
@@ -32,6 +34,8 @@ export async function generateCacheKey(params: CacheKeyParams): Promise<string> 
     : '';
 
   const raw = [
+    (params.profileId || '').trim(),
+    (params.baseUrl || '').trim(),
     params.text.trim(),
     params.model.trim(),
     params.targetLang.trim(),

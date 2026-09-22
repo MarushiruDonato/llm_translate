@@ -36,6 +36,15 @@ export function App() {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
+  const selectedTextRef = useRef(selectedText);
+  selectedTextRef.current = selectedText;
+  const contextBeforeRef = useRef(contextBefore);
+  contextBeforeRef.current = contextBefore;
+  const contextAfterRef = useRef(contextAfter);
+  contextAfterRef.current = contextAfter;
+  const selectedModelKeyRef = useRef(selectedModelKey);
+  selectedModelKeyRef.current = selectedModelKey;
+
 
   // Load available models and default settings
   useEffect(() => {
@@ -96,15 +105,24 @@ export function App() {
   };
 
   // Start translation
-  const startTranslation = async (bypassCache = false, overrideModelKey?: string) => {
+  const startTranslation = async (
+    bypassCache = false,
+    overrideModelKey?: string,
+    overrideText?: string,
+    overrideContext?: { before?: string; after?: string }
+  ) => {
     disconnectPort();
 
-    const targetModelKey = overrideModelKey || selectedModelKey;
+    const targetModelKey = overrideModelKey || selectedModelKeyRef.current;
     const [profileId, modelName] = targetModelKey.split(':');
     if (!profileId || !modelName) {
       setError(t('noModelConfigured', undefined, uiLocale));
       return;
     }
+
+    const currentText = overrideText !== undefined ? overrideText : selectedTextRef.current;
+    const currentCtxBefore = overrideContext?.before !== undefined ? overrideContext.before : contextBeforeRef.current;
+    const currentCtxAfter = overrideContext?.after !== undefined ? overrideContext.after : contextAfterRef.current;
 
     const settings = await getSettings();
 
@@ -142,16 +160,15 @@ export function App() {
         portRef.current = null;
       });
 
-      const sourceUrl = generateTextFragmentUrl(window.location.href, selectedText);
+      const sourceUrl = generateTextFragmentUrl(window.location.href, currentText);
       const sourceTitle = document.title || '';
-
 
       port.postMessage({
         type: 'translate',
         request: {
-          text: selectedText,
-          contextBefore,
-          contextAfter,
+          text: currentText,
+          contextBefore: currentCtxBefore,
+          contextAfter: currentCtxAfter,
           targetLang: settings.targetLang,
           profileId,
           modelName,
@@ -221,6 +238,9 @@ export function App() {
           }
         }
 
+        selectedTextRef.current = text;
+        contextBeforeRef.current = ctxBefore;
+        contextAfterRef.current = ctxAfter;
         setSelectedText(text);
         setContextBefore(ctxBefore);
         setContextAfter(ctxAfter);
@@ -272,7 +292,7 @@ export function App() {
 
   // Handle TRIGGER_TRANSLATE from background (context menu / keyboard shortcut)
   useEffect(() => {
-    const handleMessage = (msg: any) => {
+    const handleMessage = async (msg: any) => {
       if (msg?.type === 'TRIGGER_TRANSLATE') {
         const selection = window.getSelection();
         if (!selection || selection.isCollapsed) return;
@@ -288,15 +308,35 @@ export function App() {
           cardSizeRef.current.height || 220
         );
 
+        const settings = await getSettings();
+        let ctxBefore = '';
+        let ctxAfter = '';
+        if (settings.contextChars > 0) {
+          try {
+            const fullPageText = range.startContainer.parentElement?.textContent || '';
+            const idx = fullPageText.indexOf(text);
+            if (idx >= 0) {
+              ctxBefore = fullPageText.slice(Math.max(0, idx - settings.contextChars), idx);
+              ctxAfter = fullPageText.slice(idx + text.length, idx + text.length + settings.contextChars);
+            }
+          } catch {
+            // ignore context extraction error
+          }
+        }
+
+        selectedTextRef.current = text;
+        contextBeforeRef.current = ctxBefore;
+        contextAfterRef.current = ctxAfter;
+
         setSelectedText(text);
+        setContextBefore(ctxBefore);
+        setContextAfter(ctxAfter);
         setCardPos(calculatedPos);
         setShowButton(false);
         setShowCard(true);
 
-        // Immediate translate
-        setTimeout(() => {
-          startTranslation(false);
-        }, 50);
+        // Immediate translate with latest text & context explicitly
+        startTranslation(false, undefined, text, { before: ctxBefore, after: ctxAfter });
       }
     };
 
@@ -304,7 +344,7 @@ export function App() {
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage);
     };
-  }, [selectedModelKey]);
+  }, []);
 
   // Dragging logic
   const handleDragStart = (e: MouseEvent) => {

@@ -9,13 +9,21 @@ export class AnthropicAdapter implements ProtocolAdapter {
     const url = `${cleanBaseUrl(options.baseUrl)}/messages`;
     const isStreaming = options.streaming !== false;
 
+    const {
+      thinking,
+      reasoning_effort,
+      max_tokens,
+      stream: _stream,
+      ...restParams
+    } = options.params || {};
+
     const body: Record<string, any> = {
       model: options.model,
       system: options.systemPrompt,
       messages: [{ role: 'user', content: formatUserMessage(options) }],
-      max_tokens: options.params?.max_tokens || 4096,
+      max_tokens: max_tokens || 4096,
       stream: isStreaming,
-      ...(options.params || {}),
+      ...restParams,
     };
 
     let res: Response;

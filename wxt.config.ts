@@ -11,7 +11,7 @@ export default defineConfig({
     default_locale: 'zh_CN',
     name: '__MSG_extName__',
     description: '__MSG_extDesc__',
-    version: '0.1.0',
+    version: '0.1.1',
     permissions: ['storage', 'contextMenus'],
     optional_host_permissions: ['*://*/*'],
     commands: {

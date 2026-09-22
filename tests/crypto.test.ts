@@ -53,4 +53,33 @@ describe('generateCacheKey', () => {
     expect(key1).not.toBe(key2);
     expect(key1).not.toBe(key3);
   });
+
+  it('should isolate cache keys by profileId and baseUrl', async () => {
+    const baseParams = {
+      text: 'Hello world',
+      model: 'gpt-4o',
+      targetLang: 'zh-CN',
+    };
+
+    const keyProfileA = await generateCacheKey({
+      ...baseParams,
+      profileId: 'profile-1',
+      baseUrl: 'https://api.openai.com/v1',
+    });
+
+    const keyProfileB = await generateCacheKey({
+      ...baseParams,
+      profileId: 'profile-2',
+      baseUrl: 'https://api.openai.com/v1',
+    });
+
+    const keyDifferentBaseUrl = await generateCacheKey({
+      ...baseParams,
+      profileId: 'profile-1',
+      baseUrl: 'https://api.proxy.com/v1',
+    });
+
+    expect(keyProfileA).not.toBe(keyProfileB);
+    expect(keyProfileA).not.toBe(keyDifferentBaseUrl);
+  });
 });

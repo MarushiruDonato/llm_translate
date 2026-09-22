@@ -102,6 +102,27 @@ describe('formatUserMessage with ping pong and rawPrompt', () => {
     expect(msg).toContain('请将以下内容翻译为「中文」');
     expect(msg).toContain('hello');
   });
+
+  it('should include context without repeating text at the end', () => {
+    const msg = formatUserMessage({
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-test',
+      model: 'gpt-4o',
+      systemPrompt: 'Translate',
+      targetLang: '中文',
+      text: 'SELECTED_TEXT',
+      contextBefore: 'BEFORE_TEXT',
+      contextAfter: 'AFTER_TEXT',
+    });
+    expect(msg).toContain('【周围上下文】：');
+    expect(msg).toContain('...BEFORE_TEXT');
+    expect(msg).toContain('[需翻译文本]: SELECTED_TEXT');
+    expect(msg).toContain('AFTER_TEXT...');
+    expect(msg).toContain('请只将上述「[需翻译文本]」部分翻译为「中文」');
+    // Ensure SELECTED_TEXT only appears once
+    const matches = msg.match(/SELECTED_TEXT/g);
+    expect(matches?.length).toBe(1);
+  });
 });
 
 describe('OpenAIResponsesAdapter thinking and reasoning support', () => {
@@ -240,4 +261,48 @@ describe('OpenAIResponsesAdapter thinking and reasoning support', () => {
     }
   });
 });
+
+describe('AnthropicAdapter param filtering', () => {
+  it('should strip thinking, reasoning_effort and not let params override stream', async () => {
+    const adapter = new AnthropicAdapter();
+    let capturedBody: any = null;
+
+    const origFetch = global.fetch;
+    global.fetch = (async (_url: string, init?: RequestInit) => {
+      capturedBody = JSON.parse(init?.body as string);
+      return new Response(JSON.stringify({ content: [{ text: 'response' }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as any;
+
+    try {
+      for await (const _ of adapter.translate({
+        baseUrl: 'https://api.anthropic.com/v1',
+        apiKey: 'sk-ant-test',
+        model: 'claude-3-5-sonnet',
+        systemPrompt: 'Translate',
+        targetLang: 'zh-CN',
+        text: 'hello',
+        streaming: true,
+        params: {
+          thinking: true,
+          reasoning_effort: 'high',
+          stream: false,
+          temperature: 0.3,
+          max_tokens: 8192,
+        },
+      })) {}
+
+      expect(capturedBody.thinking).toBeUndefined();
+      expect(capturedBody.reasoning_effort).toBeUndefined();
+      expect(capturedBody.stream).toBe(true);
+      expect(capturedBody.max_tokens).toBe(8192);
+      expect(capturedBody.temperature).toBe(0.3);
+    } finally {
+      global.fetch = origFetch;
+    }
+  });
+});
+
 
