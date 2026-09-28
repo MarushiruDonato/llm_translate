@@ -1,5 +1,7 @@
 # LLM 划词翻译 (LLM Selection Translate)
 
+[Edge 扩展商店安装](https://microsoftedge.microsoft.com/addons/detail/llm-%E5%88%92%E8%AF%8D%E7%BF%BB%E8%AF%91/pkkgikgnabeenjabjodobpilamlpffgj)
+
 一款纯粹简洁的大模型划词翻译浏览器扩展，采用 **BYOK (Bring Your Own Key)** 模式，纯客户端直连各大模型服务商，无中间服务器，注重速度与隐私安全。
 
 ## 特性
